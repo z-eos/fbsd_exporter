@@ -1,0 +1,246 @@
+#!/bin/sh
+#
+#
+#
+
+set -e
+
+# default, mandatory for each scope
+LIB_FILES="common.sh"
+CONFIG_FILE="/usr/local/etc/fbsd_exporter.conf"
+
+# Parse command line options
+while getopts "c:M:s:" opt; do
+    case "$opt" in
+	c) CONFIG_FILE="$OPTARG" ;;
+	s)
+	    case "$OPTARG" in
+		fast)
+		    SCOPE=$OPTARG
+		    LIB_FILES="${LIB_FILES} cpu.sh memory.sh disk.sh filesystem.sh zfs.sh process.sh"
+		    ;;
+		slow)
+		    SCOPE=$OPTARG
+		    LIB_FILES="${LIB_FILES} zfs.sh"
+		    ;;
+		userspace)
+		    SCOPE=$OPTARG
+		    LIB_FILES="${LIB_FILES} zfs_userspace.sh"
+		    ;;
+		*)
+		    echo "Invalid scope option: $OPTARG, " >&2
+		    echo "Usage: scope one of: fast (default), slow or userspace" >&2
+		    exit 1
+		    ;;
+	    esac
+	    ;;
+	M) METRICS_DIR="$OPTARG" ;;
+	*)
+	    echo "Usage: $0 [-c configfile] [-M metrics-dir] [-s scope]" >&2
+	    exit 1
+	    ;;
+    esac
+done
+
+# Shift past the parsed options to get positional arguments
+shift $((OPTIND - 1))
+
+# Check metrics directory exists
+if [ ! -e "$CONFIG_FILE" ]; then
+    echo "# FATAL: Config file $CONFIG_FILE does not exist"
+    exit 0
+fi
+
+. $CONFIG_FILE
+
+if [ -z $SCOPE ]; then
+    SCOPE='fast'
+    LIB_FILES="${LIB_FILES} cpu.sh memory.sh disk.sh filesystem.sh zfs.sh process.sh"
+fi
+
+# Load configuration and libraries
+# SCRIPT_DIR=$(dirname "$(realpath "$0")")
+for FILE in $LIB_FILES; do
+    . "${SCRIPT_DIR}/lib/${FILE}"
+done
+
+OUTPUT="${METRICS_DIR}/${SCOPE}.prom"
+
+# Ensure metrics directory exists
+mkdir -p "$METRICS_DIR"
+
+#############
+#   FAST    #
+#############
+collect_all_fast() {
+    echo "# Fast metrics collected at $(now)"
+    echo "# Hostname: ${HOSTNAME}"
+    echo ""
+
+    # CPU metrics
+    if [ "$ENABLE_CPU" = "1" ]; then
+	run_collector "cpu" collect_cpu
+	echo ""
+    fi
+
+    # Memory metrics
+    if [ "$ENABLE_MEMORY" = "1" ]; then
+	run_collector "memory" collect_memory
+	echo ""
+    fi
+
+    # Disk I/O metrics
+    if [ "$ENABLE_DISK_IO" = "1" ]; then
+	run_collector "disk" collect_disk
+	echo ""
+    fi
+
+    # Filesystem metrics
+    if [ "$ENABLE_FILESYSTEM" = "1" ]; then
+	run_collector "filesystem" collect_filesystem
+	echo ""
+    fi
+
+    # ZFS core metrics (ARC, basic pool stats)
+    if [ "$ENABLE_ZFS_CORE" = "1" ]; then
+	run_collector "zfs" collect_zfs
+	echo ""
+    fi
+
+    # Process metrics
+    if [ "$ENABLE_PROCESS" = "1" ]; then
+	run_collector "process" collect_process
+	echo ""
+    fi
+}
+
+#############
+#   SLOW    #
+#############
+collect_all_slow() {
+    echo "# Slow metrics collected at $(now)"
+    echo "# Hostname: ${HOSTNAME}"
+    echo ""
+
+    # ZFS pool health and detailed status
+    if [ "$ENABLE_ZFS_CORE" = "1" ] && has_zfs; then
+	run_collector "zfs_health" collect_zfs_pool_health
+	echo ""
+    fi
+
+    # System uptime
+    metric_help "freebsd_system_uptime_seconds" "System uptime in seconds"
+    metric_type "freebsd_system_uptime_seconds" "gauge"
+    uptime_seconds=$(sysctl -n kern.boottime 2>/dev/null | awk '{print $4}' | tr -d ',')
+    if [ -n "$uptime_seconds" ]; then
+	current=$(now)
+	uptime=$((current - uptime_seconds))
+	metric "freebsd_system_uptime_seconds" "" "$uptime"
+    fi
+    echo ""
+
+    # System info
+    metric_help "freebsd_system_info" "System information"
+    metric_type "freebsd_system_info" "gauge"
+    os_version=$(uname -r 2>/dev/null || echo "unknown")
+    kernel=$(uname -v 2>/dev/null | awk '{print $1}' || echo "unknown")
+    arch=$(uname -m 2>/dev/null || echo "unknown")
+
+    metric "freebsd_system_info" "hostname=\"${HOSTNAME}\",version=\"${os_version}\",kernel=\"${kernel}\",arch=\"${arch}\"" "1"
+    echo ""
+}
+
+#############
+# USERSPACE #
+#############
+collect_all_userspace() {
+    echo "# ZFS userspace metrics collected at $(now)"
+    echo "# Hostname: ${HOSTNAME}"
+    echo ""
+
+    run_collector "zfs_userspace" collect_zfs_userspace
+    echo ""
+}
+
+# Main execution
+main() {
+    TMP="${OUTPUT}.$$"
+    trap 'rm -f "$TMP"' EXIT INT TERM
+
+    case "$SCOPE" in
+	fast)
+	    # Loop mode for sub-minute collection
+	    if [ "$1" = "--loop" ]; then
+		iterations=${2:-6}
+		interval=${3:-10}
+
+		for i in $(seq 1 "$iterations"); do
+		    collect_all_fast > "$TMP" 2>&1
+
+		    if [ -s "$TMP" ]; then
+			mv "$TMP" "$OUTPUT"
+			chmod 644 "$OUTPUT"
+		    else
+			log_error "Fast collection produced no output"
+		    fi
+
+		    [ "$i" -lt "$iterations" ] && sleep "$interval"
+		done
+	    elif [ "$1" = "--daemon" ]; then
+		# Daemon mode - continuous loop
+		interval=${2:-10}
+		while true; do
+		    collect_all_fast > "$TMP" 2>&1
+
+		    if [ -s "$TMP" ]; then
+			mv "$TMP" "$OUTPUT"
+			chmod 644 "$OUTPUT"
+		    else
+			log_error "Fast collection produced no output"
+		    fi
+
+		    sleep "$interval"
+		done
+	    else
+		# Single run
+		collect_all_fast > "$TMP" 2>&1
+
+		if [ -s "$TMP" ]; then
+		    mv "$TMP" "$OUTPUT"
+		    chmod 644 "$OUTPUT"
+		else
+		    log_error "Fast collection produced no output"
+		    exit 1
+		fi
+	    fi
+	    ;;
+
+	slow)
+	    collect_all_slow > "$TMP" 2>&1
+
+	    if [ -s "$TMP" ]; then
+		mv "$TMP" "$OUTPUT"
+		chmod 644 "$OUTPUT"
+	    else
+		log_error "Slow collection produced no output"
+		exit 1
+	    fi
+	    ;;
+
+	userspace)
+	    collect_all_userspace > "$TMP" 2>&1
+
+	    if [ -s "$TMP" ]; then
+		mv "$TMP" "$OUTPUT"
+		chmod 644 "$OUTPUT"
+	    else
+		log_error "Userspace collection produced no output"
+		exit 1
+	    fi
+	    ;;
+
+    esac
+
+}
+
+main "$@"
