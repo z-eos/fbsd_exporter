@@ -5,9 +5,10 @@
 
 set -e
 
+CONFIG_FILE="/usr/local/etc/fbsd_exporter.conf"
+
 # default, mandatory for each scope
 LIB_FILES="common.sh"
-CONFIG_FILE="/usr/local/etc/fbsd_exporter.conf"
 
 # Parse command line options
 while getopts "c:M:s:" opt; do
@@ -36,7 +37,7 @@ while getopts "c:M:s:" opt; do
 	    ;;
 	M) METRICS_DIR="$OPTARG" ;;
 	*)
-	    echo "Usage: $0 [-c configfile] [-M metrics-dir] [-s scope]" >&2
+	    echo "Usage: $0 [-c configfile] [-M metrics-dir] [-s metrics scope (fast, slow, userspace)]" >&2
 	    exit 1
 	    ;;
     esac
@@ -129,24 +130,24 @@ collect_all_slow() {
     fi
 
     # System uptime
-    metric_help "freebsd_system_uptime_seconds" "System uptime in seconds"
-    metric_type "freebsd_system_uptime_seconds" "gauge"
+    metric_help "${METRIC_NAME_PREFIX}_system_uptime_seconds" "System uptime in seconds"
+    metric_type "${METRIC_NAME_PREFIX}_system_uptime_seconds" "gauge"
     uptime_seconds=$(sysctl -n kern.boottime 2>/dev/null | awk '{print $4}' | tr -d ',')
     if [ -n "$uptime_seconds" ]; then
 	current=$(now)
 	uptime=$((current - uptime_seconds))
-	metric "freebsd_system_uptime_seconds" "" "$uptime"
+	metric "${METRIC_NAME_PREFIX}_system_uptime_seconds" "" "$uptime"
     fi
     echo ""
 
     # System info
-    metric_help "freebsd_system_info" "System information"
-    metric_type "freebsd_system_info" "gauge"
+    metric_help "${METRIC_NAME_PREFIX}_system_info" "System information"
+    metric_type "${METRIC_NAME_PREFIX}_system_info" "gauge"
     os_version=$(uname -r 2>/dev/null || echo "unknown")
     kernel=$(uname -v 2>/dev/null | awk '{print $1}' || echo "unknown")
     arch=$(uname -m 2>/dev/null || echo "unknown")
 
-    metric "freebsd_system_info" "hostname=\"${HOSTNAME}\",version=\"${os_version}\",kernel=\"${kernel}\",arch=\"${arch}\"" "1"
+    metric "${METRIC_NAME_PREFIX}_system_info" "hostname=\"${HOSTNAME}\",version=\"${os_version}\",kernel=\"${kernel}\",arch=\"${arch}\"" "1"
     echo ""
 }
 
