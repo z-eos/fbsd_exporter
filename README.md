@@ -1,4 +1,4 @@
-# FreeBSD Prometheus Metrics Collector
+# FreeBSD Openmetrics Generator And Collector
 
 A lightweight, modular openmetrics exporter for FreeBSD systems, designed to provide comprehensive system monitoring with minimal overhead.
 
