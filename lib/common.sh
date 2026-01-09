@@ -10,6 +10,13 @@ if [ ! -e "$CONFIG_FILE" ]; then
 fi
 
 . $CONFIG_FILE
+if [ -n $OPT_METRICS_DIR ]; then
+    METRICS_DIR=$OPT_METRICS_DIR
+fi
+if [ -n $OPT_DEBUG ]; then
+    DEBUG=$OPT_DEBUG
+fi
+
 . /etc/os-release
 
 VERSION_ID_DOTLESS=$(echo $VERSION_ID | tr -d '.')

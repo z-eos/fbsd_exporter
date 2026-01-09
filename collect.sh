@@ -11,9 +11,10 @@ CONFIG_FILE="/usr/local/etc/fbsd_exporter.conf"
 LIB_FILES="common.sh"
 
 # Parse command line options
-while getopts "c:M:s:" opt; do
+while getopts "c:M:s:d" opt; do
     case "$opt" in
 	c) CONFIG_FILE="$OPTARG" ;;
+	d) OPT_DEBUG=1 ;;
 	s)
 	    case "$OPTARG" in
 		fast)
@@ -35,7 +36,7 @@ while getopts "c:M:s:" opt; do
 		    ;;
 	    esac
 	    ;;
-	M) METRICS_DIR="$OPTARG" ;;
+	M) OPT_METRICS_DIR="$OPTARG" ;;
 	*)
 	    echo "Usage: $0 [-c configfile] [-M metrics-dir] [-s metrics scope (fast, slow, userspace)]" >&2
 	    exit 1
@@ -53,6 +54,13 @@ if [ ! -e "$CONFIG_FILE" ]; then
 fi
 
 . $CONFIG_FILE
+
+if [ -n $OPT_METRICS_DIR ]; then
+    METRICS_DIR=$OPT_METRICS_DIR
+fi
+if [ -n $OPT_DEBUG ]; then
+    DEBUG=$OPT_DEBUG
+fi
 
 if [ -z $SCOPE ]; then
     SCOPE='fast'
@@ -74,7 +82,7 @@ mkdir -p "$METRICS_DIR"
 #   FAST    #
 #############
 collect_all_fast() {
-    echo "# Fast metrics collected at $(now)"
+    echo "# Fast metrics collected at $(date +%FT%T)"
     echo "# Hostname: ${HOSTNAME}"
     echo ""
 
