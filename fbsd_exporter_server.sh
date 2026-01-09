@@ -1,9 +1,8 @@
 #!/bin/sh
 #
-# /usr/local/libexec/freebsd-metrics-server.sh
-#
 # FreeBSD Prometheus metrics HTTP server for inetd
 # Serves pre-collected metrics with atomic merging
+#
 
 set -e
 
@@ -14,9 +13,9 @@ METRICS_DIR="/var/spool/lib/freebsd-metrics"
 while getopts "c:M:" opt; do
     case "$opt" in
 	c) CONFIG_FILE="$OPTARG" ;;
-	M) METRICS_DIR="$OPTARG" ;;
+	M) OPT_METRICS_DIR="$OPTARG" ;;
 	*)
-	    echo "Usage: $0 [-c configfile]" >&2
+	    echo "Usage: $0 [-c configfile] [-M metrics-dir]" >&2
 	    exit 1
 	    ;;
     esac
@@ -26,6 +25,9 @@ done
 shift $((OPTIND - 1))
 
 . $CONFIG_FILE
+if [ -n $OPT_METRICS_DIR ]; then
+    METRICS_DIR=$OPT_METRICS_DIR
+fi
 
 # Staleness thresholds (seconds)
 FAST_MAX_AGE=120      # 2 minutes
