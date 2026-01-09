@@ -31,6 +31,7 @@ if [ ! -e "$CONFIG_FILE" ]; then
 fi
 
 . $CONFIG_FILE
+. ${SCRIPT_DIR}/lib/common.sh
 
 if [ "${OPT_METRICS_DIR:+x}" = x ] && [ -n "$OPT_METRICS_DIR" ]; then
     METRICS_DIR=$OPT_METRICS_DIR
