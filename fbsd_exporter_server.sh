@@ -6,13 +6,13 @@
 
 set -e
 
-CONFIG_FILE="/usr/local/etc/freebsd-metrics.conf"
-METRICS_DIR="/var/spool/lib/freebsd-metrics"
+CONFIG_FILE="/usr/local/etc/fbsd_exporter.conf"
 
 # Parse command line options
-while getopts "c:M:" opt; do
+while getopts "c:M:d" opt; do
     case "$opt" in
 	c) CONFIG_FILE="$OPTARG" ;;
+	d) OPT_DEBUG=1 ;;
 	M) OPT_METRICS_DIR="$OPTARG" ;;
 	*)
 	    echo "Usage: $0 [-c configfile] [-M metrics-dir]" >&2
@@ -24,9 +24,19 @@ done
 # Shift past the parsed options to get positional arguments
 shift $((OPTIND - 1))
 
+# Check metrics directory exists
+if [ ! -e "$CONFIG_FILE" ]; then
+    echo "# FATAL: Config file $CONFIG_FILE does not exist"
+    exit 0
+fi
+
 . $CONFIG_FILE
-if [ -n $OPT_METRICS_DIR ]; then
+
+if [ "${OPT_METRICS_DIR:+x}" = x ] && [ -n "$OPT_METRICS_DIR" ]; then
     METRICS_DIR=$OPT_METRICS_DIR
+fi
+if [ "${OPT_DEBUG:+x}" ] && [ -n "$OPT_DEBUG" ]; then
+    DEBUG=$OPT_DEBUG
 fi
 
 # Staleness thresholds (seconds)
