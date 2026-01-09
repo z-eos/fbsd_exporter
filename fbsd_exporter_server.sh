@@ -40,11 +40,6 @@ if [ "${OPT_DEBUG:+x}" ] && [ -n "$OPT_DEBUG" ]; then
     DEBUG=$OPT_DEBUG
 fi
 
-# Staleness thresholds (seconds)
-FAST_MAX_AGE=120      # 2 minutes
-SLOW_MAX_AGE=600      # 10 minutes
-USERSPACE_MAX_AGE=1800  # 30 minutes
-
 # Read and discard HTTP request
 while IFS= read -r line; do
     line=$(printf '%s' "$line" | tr -d '\r')
@@ -83,17 +78,17 @@ get_age() {
 # Helper: safely cat file with error handling
 safe_cat() {
     scope=$1
-    case s in
+    case $scope in
 	fast)
-	    max_age=$FAST_MAX_AGE
+	    max_age="$MAX_AGE_FAST"
 	    required="required"
 	    ;;
 	slow)
-	    max_age=$SLOW_MAX_AGE
+	    max_age="$MAX_AGE_SLOW"
 	    required="required"
 	    ;;
 	userspace)
-	    max_age=$USERSPACE_MAX_AGE
+	    max_age="$MAX_AGE_USERSPACE"
 	    required="optional"
 	    ;;
     esac
@@ -106,7 +101,7 @@ safe_cat() {
     if [ ! -f "$file" ]; then
 	if [ "$required" = "required" ]; then
 	    echo "# ERROR: Required file ${name} not found"
-	    echo "freebsd_metrics_file_status{file=\"${name}\",status=\"missing\"} 1"
+	    echo "${METRIC_NAME_PREFIX}_metrics_file_status{file=\"${name}\",status=\"missing\"} 1"
 	fi
 	return 1
     fi
@@ -114,33 +109,33 @@ safe_cat() {
     # File unreadable
     if [ ! -r "$file" ]; then
 	echo "# ERROR: File ${name} not readable"
-	echo "freebsd_metrics_file_status{file=\"${name}\",status=\"unreadable\"} 1"
+	echo "${METRIC_NAME_PREFIX}_metrics_file_status{file=\"${name}\",status=\"unreadable\"} 1"
 	return 1
     fi
 
     # File empty
     if [ ! -s "$file" ]; then
 	echo "# WARNING: File ${name} is empty"
-	echo "freebsd_metrics_file_status{file=\"${name}\",status=\"empty\"} 1"
+	echo "${METRIC_NAME_PREFIX}_metrics_file_status{file=\"${name}\",status=\"empty\"} 1"
 	return 1
     fi
 
     # File stale
     if [ "$age" -gt "$max_age" ]; then
 	echo "# WARNING: File ${name} is stale (${age}s old, max ${max_age}s)"
-	echo "freebsd_metrics_file_age_seconds{file=\"${name}\"} $age"
+	echo "${METRIC_NAME_PREFIX}_metrics_file_age_seconds{file=\"${name}\"} $age"
     fi
 
     # Try to cat the file
     if cat "$file" 2>/dev/null; then
 	echo ""
 	echo "# File ${name} served successfully"
-	echo "freebsd_metrics_file_status{file=\"${name}\",status=\"ok\"} 1"
-	echo "freebsd_metrics_file_age_seconds{file=\"${name}\"} $age"
+	echo "${METRIC_NAME_PREFIX}_metrics_file_status{file=\"${name}\",status=\"ok\"} 1"
+	echo "${METRIC_NAME_PREFIX}_metrics_file_age_seconds{file=\"${name}\"} $age"
 	return 0
     else
 	echo "# ERROR: Failed to read ${name}"
-	echo "freebsd_metrics_file_status{file=\"${name}\",status=\"read_error\"} 1"
+	echo "${METRIC_NAME_PREFIX}_metrics_file_status{file=\"${name}\",status=\"read_error\"} 1"
 	return 1
     fi
 }
@@ -148,7 +143,7 @@ safe_cat() {
 # Check metrics directory exists
 if [ ! -d "$METRICS_DIR" ]; then
     echo "# FATAL: Metrics directory $METRICS_DIR does not exist"
-    echo "freebsd_metrics_directory_missing 1"
+    echo "${METRIC_NAME_PREFIX}_metrics_directory_missing 1"
     echo "# EOF"
     exit 0
 fi
@@ -164,14 +159,14 @@ for scope in fast slow userspace; do
 done
 
 # Server metadata
-echo "# HELP freebsd_metrics_server_info Metrics server information"
-echo "# TYPE freebsd_metrics_server_info gauge"
-echo "freebsd_metrics_server_info{version=\"1.0\",hostname=\"$(hostname)\"} 1"
+echo "# HELP ${METRIC_NAME_PREFIX}_metrics_server_info Metrics server information"
+echo "# TYPE ${METRIC_NAME_PREFIX}_metrics_server_info gauge"
+echo "${METRIC_NAME_PREFIX}_metrics_server_info{version=\"1.0\",hostname=\"$(hostname)\"} 1"
 echo ""
 
-echo "# HELP freebsd_metrics_server_scrape_timestamp_seconds Timestamp of this scrape"
-echo "# TYPE freebsd_metrics_server_scrape_timestamp_seconds gauge"
-echo "freebsd_metrics_server_scrape_timestamp_seconds $(date +%s)"
+echo "# HELP ${METRIC_NAME_PREFIX}_metrics_server_scrape_timestamp_seconds Timestamp of this scrape"
+echo "# TYPE ${METRIC_NAME_PREFIX}_metrics_server_scrape_timestamp_seconds gauge"
+echo "${METRIC_NAME_PREFIX}_metrics_server_scrape_timestamp_seconds $(date +%s)"
 echo ""
 
 # OpenMetrics EOF marker
