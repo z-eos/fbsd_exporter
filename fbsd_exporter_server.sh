@@ -71,10 +71,23 @@ get_age() {
 
 # Helper: safely cat file with error handling
 safe_cat() {
-    file="$1"
-    name="$2"
-    max_age="$3"
-    required="$4"  # "required" or "optional"
+    scope=$1
+    case s in
+	fast)
+	    max_age=$FAST_MAX_AGE
+	    required="required"
+	    ;;
+	slow)
+	    max_age=$SLOW_MAX_AGE
+	    required="required"
+	    ;;
+	userspace)
+	    max_age=$USERSPACE_MAX_AGE
+	    required="optional"
+	    ;;
+    esac
+    file="${METRICS_DIR}/${METRIC_NAME_PREFIX}_exporter_${scope}.prom"
+    name="$(basename $1)"
 
     age=$(get_age "$file")
 
@@ -134,14 +147,10 @@ echo "# FreeBSD Prometheus Metrics"
 echo "# Metrics collected from multiple files"
 echo ""
 
-safe_cat "${METRICS_DIR}/fast.prom" "fast.prom" "$FAST_MAX_AGE" "required"
-echo ""
-
-safe_cat "${METRICS_DIR}/slow.prom" "slow.prom" "$SLOW_MAX_AGE" "required"
-echo ""
-
-safe_cat "${METRICS_DIR}/userspace.prom" "userspace.prom" "$USERSPACE_MAX_AGE" "optional"
-echo ""
+for scope in fast slow userspace; do
+    safe_cat $scope
+    echo ""
+done
 
 # Server metadata
 echo "# HELP freebsd_metrics_server_info Metrics server information"

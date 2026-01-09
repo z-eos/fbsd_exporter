@@ -73,7 +73,7 @@ for FILE in $LIB_FILES; do
     . "${SCRIPT_DIR}/lib/${FILE}"
 done
 
-OUTPUT="${METRICS_DIR}/${SCOPE}.prom"
+OUTPUT="${METRICS_DIR}/${METRIC_NAME_PREFIX}_exporter_${SCOPE}.prom"
 
 # Ensure metrics directory exists
 mkdir -p "$METRICS_DIR"
