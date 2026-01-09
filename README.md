@@ -2,6 +2,8 @@
 
 A lightweight, modular openmetrics exporter for FreeBSD systems, designed to provide comprehensive system monitoring with minimal overhead.
 
+The main idea is to use tools natively available in OS.
+
 ## Features
 
 - **Modular Architecture**: Enable/disable metric groups as needed
@@ -54,13 +56,13 @@ A lightweight, modular openmetrics exporter for FreeBSD systems, designed to pro
 └────────┬────────┘
 		 │ spawn
 		 ▼
-┌─────────────────────────────┐
-│ freebsd-metrics-server.sh   │
-│  reads and merges:          │
-│  - fast.prom                │
-│  - slow.prom                │
-│  - userspace.prom           │
-└─────────────────────────────┘
+┌─────────────────────────────────┐
+│ fbsd_exporter_server.sh         │
+│  reads and merges:              │
+│  - fbsd_exporter_fast.prom      │
+│  - fbsd_exporter_slow.prom      │
+│  - fbsd_exporter_userspace.prom │
+└─────────────────────────────────┘
 		 ▲
 		 │ atomic writes
 	┌────┴────┬─────────┐
@@ -74,48 +76,32 @@ A lightweight, modular openmetrics exporter for FreeBSD systems, designed to pro
 
 ## Configuration
 
-Edit `/usr/local/etc/freebsd-metrics.conf`:
-
-```bash
-# Enable/disable modules
-ENABLE_CPU=1
-ENABLE_MEMORY=1
-ENABLE_DISK_IO=1
-ENABLE_FILESYSTEM=1
-ENABLE_ZFS_CORE=1
-ENABLE_ZFS_USERSPACE=0  # Enable for quota tracking
-ENABLE_PROCESS=0        # Enable for process monitoring
-
-# ZFS userspace settings (if enabled)
-ZFS_USERSPACE_DATASETS="tank/mails tank/home"
-ZFS_USERSPACE_TYPES="user group"
-
-# Process monitoring (if enabled)
-PROCESS_NAMES="nginx postgres sshd"
-```
+Edit `/usr/local/etc/fbsd_exporter.conf`:
 
 ## Setup
 
 ### 1. Configure Cron
 
+create file in /usr/local/etc/cron.d with something like this
+
 ```bash
-# Edit crontab for prometheus user
-crontab -u prometheus -e
+#
+# minute hour mday month wday who command
+#
 
-# Add these lines:
-* * * * * /usr/local/lib/freebsd-metrics/collect-fast.sh --loop 6 10
-*/5 * * * * /usr/local/lib/freebsd-metrics/collect-slow.sh
-*/15 * * * * /usr/local/lib/freebsd-metrics/collect-userspace.sh
+*/1  * * * * root /usr/local/libexec/fbsd_exporter/collect.sh
+*/5  * * * * root /usr/local/libexec/fbsd_exporter/collect.sh -s slow
+*/15 * * * * root /usr/local/libexec/fbsd_exporter/collect.sh -s userspace
+
+#
 ```
-
-The `--loop 6 10` runs fast collector 6 times with 10-second intervals (every minute, collects every 10s).
 
 ### 2. Configure inetd
 
 Add to `/etc/inetd.conf`:
 
 ```
-9101 stream tcp nowait nobody /usr/local/libexec/freebsd-metrics-server.sh freebsd-metrics-server.sh
+9101 stream tcp nowait nobody /usr/local/libexec/fbsd_exporter_server.sh fbsd_exporter_server.sh
 ```
 
 Enable inetd in `/etc/rc.conf`:
@@ -147,10 +133,10 @@ pass in proto tcp from $prometheus_server to any port 9101
 curl http://localhost:9101/metrics
 
 # Check if metrics are being collected
-ls -lh /var/lib/freebsd-metrics/
+ls -lh /var/spool/fbsd_exporter/
 
 # Check cron logs
-grep freebsd-metrics /var/log/cron
+grep fbsd_exporter /var/log/cron
 ```
 
 ## Prometheus Configuration
@@ -159,7 +145,7 @@ Add to `prometheus.yml`:
 
 ```yaml
 scrape_configs:
-  - job_name: 'freebsd-hosts'
+  - job_name: 'fbsd'
 	static_configs:
 	  - targets:
 		  - 'freebsd-host1.example.com:9101'
