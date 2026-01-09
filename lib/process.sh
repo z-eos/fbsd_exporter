@@ -31,7 +31,6 @@ collect_process() {
     ps auxww 2>/dev/null | \
     _awk -v names="$names_pattern" \
 	-v patterns="$PROCESS_PATTERNS" \
-	-v max="$PROCESS_MAX_TRACKED" \
 	-v aggregate="$PROCESS_INCLUDE_AGGREGATE" '
     BEGIN { count = 0 }
     NR > 1 {
@@ -54,7 +53,6 @@ collect_process() {
 	if (patterns && $0 ~ patterns) matched = 1
 
 	if (!matched) next
-	if (count >= max) next
 
 	count++
 
