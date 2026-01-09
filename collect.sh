@@ -55,10 +55,10 @@ fi
 
 . $CONFIG_FILE
 
-if [ -n $OPT_METRICS_DIR ]; then
+if [ "${OPT_METRICS_DIR:+x}" = x ] && [ -n "$OPT_METRICS_DIR" ]; then
     METRICS_DIR=$OPT_METRICS_DIR
 fi
-if [ -n $OPT_DEBUG ]; then
+if [ "${OPT_DEBUG:+x}" ] && [ -n "$OPT_DEBUG" ]; then
     DEBUG=$OPT_DEBUG
 fi
 
