@@ -1,0 +1,9 @@
+#
+# minute hour mday month wday who command
+#
+
+*/1  * * * * root /usr/local/libexec/fbsd_exporter/collect.sh
+*/5  * * * * root /usr/local/libexec/fbsd_exporter/collect.sh -s slow
+*/15 * * * * root /usr/local/libexec/fbsd_exporter/collect.sh -s userspace
+
+#
