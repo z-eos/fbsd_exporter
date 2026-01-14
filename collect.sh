@@ -110,6 +110,12 @@ collect_all_fast() {
 	echo ""
     fi
 
+    # ZPOOL metrics
+    if [ "$ENABLE_ZPOOL" = "1" ]; then
+	run_collector "zpol" collect_zpool
+	echo ""
+    fi
+
     # ZFS core metrics (ARC, basic pool stats)
     if [ "$ENABLE_ZFS_CORE" = "1" ]; then
 	run_collector "zfs" collect_zfs

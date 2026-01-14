@@ -21,6 +21,7 @@ collect_filesystem() {
 
     # Collect ZFS datasets if available
     if has_zfs; then
+
 	echo ${ZFS_LIST_DEPTH:+"-d $ZFS_LIST_DEPTH"}
 	zfs list -Hp -o name,used,avail,refer,mountpoint ${ZFS_LIST_DEPTH:+-d $ZFS_LIST_DEPTH} 2>/dev/null | \
 	_awk -v exclude_paths="$exclude_paths_pattern" '
@@ -40,15 +41,16 @@ collect_filesystem() {
 	    gsub(/"/, "\\\"", dataset)
 	    gsub(/"/, "\\\"", mountpoint)
 
-	    printf "%s_filesystem_size_bytes{mountpoint=\"%s\",fstype=\"zfs\",dataset=\"%s\"} %s\n", pfx, mountpoint, dataset, size
-	    printf "%s_filesystem_used_bytes{mountpoint=\"%s\",fstype=\"zfs\",dataset=\"%s\"} %s\n", pfx, mountpoint, dataset, used
+	    printf "%s_filesystem_size_bytes{mountpoint=\"%s\",fstype=\"zfs\",dataset=\"%s\"}  %s\n", pfx, mountpoint, dataset, size
+	    printf "%s_filesystem_used_bytes{mountpoint=\"%s\",fstype=\"zfs\",dataset=\"%s\"}  %s\n", pfx, mountpoint, dataset, used
 	    printf "%s_filesystem_avail_bytes{mountpoint=\"%s\",fstype=\"zfs\",dataset=\"%s\"} %s\n", pfx, mountpoint, dataset, avail
 	}'
-    fi
 
-    # Collect non-ZFS filesystems from df
-    df -kT 2>/dev/null | \
-    _awk -v exclude_types="$exclude_types_pattern" -v exclude_paths="$exclude_paths_pattern" '
+    else
+
+	# Collect non-ZFS filesystems from df
+	df -kT 2>/dev/null | \
+	    _awk -v exclude_types="$exclude_types_pattern" -v exclude_paths="$exclude_paths_pattern" '
     NR > 1 && $2 != "zfs" {
 	device = $1
 	fstype = $2
@@ -72,4 +74,6 @@ collect_filesystem() {
 	printf "%s_filesystem_used_bytes{mountpoint=\"%s\",fstype=\"%s\",device=\"%s\"} %s\n", pfx, mountpoint, fstype, device, used
 	printf "%s_filesystem_avail_bytes{mountpoint=\"%s\",fstype=\"%s\",device=\"%s\"} %s\n", pfx, mountpoint, fstype, device, avail
     }'
+    fi
+
 }
