@@ -19,11 +19,11 @@ while getopts "c:M:s:d" opt; do
 	    case "$OPTARG" in
 		fast)
 		    SCOPE=$OPTARG
-		    LIB_FILES="${LIB_FILES} cpu.sh memory.sh disk.sh filesystem.sh zfs.sh process.sh"
+		    LIB_FILES="${LIB_FILES} cpu.sh memory.sh disk.sh process.sh"
 		    ;;
 		slow)
 		    SCOPE=$OPTARG
-		    LIB_FILES="${LIB_FILES} zfs.sh"
+		    LIB_FILES="${LIB_FILES} filesystem.sh zfs.sh zpool.sh"
 		    ;;
 		userspace)
 		    SCOPE=$OPTARG
