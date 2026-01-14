@@ -52,43 +52,43 @@ collect_cpu() {
     }'
 
     # Load averages
-    metric_help "${METRIC_NAME_PREFIX}_loadavg" "System load average"
-    metric_type "${METRIC_NAME_PREFIX}_loadavg" "gauge"
+    metric_help "${METRIC_NAME_PREFIX}_sys_loadavg" "System load average"
+    metric_type "${METRIC_NAME_PREFIX}_sys_loadavg" "gauge"
 
     sysctl -n vm.loadavg 2>/dev/null | _awk '{
-	printf "%s_loadavg{period=\"1m\"} %s\n", pfx, $2
-	printf "%s_loadavg{period=\"5m\"} %s\n", pfx, $3
-	printf "%s_loadavg{period=\"15m\"} %s\n", pfx, $4
+	printf "%s_sys_loadavg{period=\"1m\"} %s\n", pfx, $2
+	printf "%s_sys_loadavg{period=\"5m\"} %s\n", pfx, $3
+	printf "%s_sys_loadavg{period=\"15m\"} %s\n", pfx, $4
     }'
 
     # Context switches and interrupts
-    metric_help "${METRIC_NAME_PREFIX}_context_switches_total" "Total context switches"
-    metric_type "${METRIC_NAME_PREFIX}_context_switches_total" "counter"
+    metric_help "${METRIC_NAME_PREFIX}_sys_context_switches_total" "Total context switches"
+    metric_type "${METRIC_NAME_PREFIX}_sys_context_switches_total" "counter"
     vm_swtch=$(sysctl -n vm.stats.sys.v_swtch 2>/dev/null || echo 0)
-    metric "${METRIC_NAME_PREFIX}_context_switches_total" "" "$vm_swtch"
+    metric "${METRIC_NAME_PREFIX}_sys_context_switches_total" "" "$vm_swtch"
 
-    metric_help "${METRIC_NAME_PREFIX}_traps_total" "Total traps"
-    metric_type "${METRIC_NAME_PREFIX}_traps_total" "counter"
+    metric_help "${METRIC_NAME_PREFIX}_sys_traps_total" "Total traps"
+    metric_type "${METRIC_NAME_PREFIX}_sys_traps_total" "counter"
     vm_trap=$(sysctl -n vm.stats.sys.v_trap 2>/dev/null || echo 0)
-    metric "${METRIC_NAME_PREFIX}_traps_total" "" "$vm_trap"
+    metric "${METRIC_NAME_PREFIX}_sys_traps_total" "" "$vm_trap"
 
-    metric_help "${METRIC_NAME_PREFIX}_syscalls_total" "Total syscalls"
-    metric_type "${METRIC_NAME_PREFIX}_syscalls_total" "counter"
+    metric_help "${METRIC_NAME_PREFIX}_sys_syscalls_total" "Total syscalls"
+    metric_type "${METRIC_NAME_PREFIX}_sys_syscalls_total" "counter"
     vm_syscall=$(sysctl -n vm.stats.sys.v_syscall 2>/dev/null || echo 0)
-    metric "${METRIC_NAME_PREFIX}_syscalls_total" "" "$vm_syscall"
+    metric "${METRIC_NAME_PREFIX}_sys_syscalls_total" "" "$vm_syscall"
 
-    metric_help "${METRIC_NAME_PREFIX}_interrupts_dev_total" "Total device interrupts"
-    metric_type "${METRIC_NAME_PREFIX}_interrupts_dev_total" "counter"
+    metric_help "${METRIC_NAME_PREFIX}_sys_interrupts_dev_total" "Total device interrupts"
+    metric_type "${METRIC_NAME_PREFIX}_sys_interrupts_dev_total" "counter"
     vm_intr=$(sysctl -n vm.stats.sys.v_intr 2>/dev/null || echo 0)
-    metric "${METRIC_NAME_PREFIX}_interrupts_dev_total" "" "$vm_intr"
+    metric "${METRIC_NAME_PREFIX}_sys_interrupts_dev_total" "" "$vm_intr"
 
-    metric_help "${METRIC_NAME_PREFIX}_interrupts_soft_total" "Total softwaree interrupts"
-    metric_type "${METRIC_NAME_PREFIX}_interrupts_soft_total" "counter"
+    metric_help "${METRIC_NAME_PREFIX}_sys_interrupts_soft_total" "Total softwaree interrupts"
+    metric_type "${METRIC_NAME_PREFIX}_sys_interrupts_soft_total" "counter"
     vm_soft=$(sysctl -n vm.stats.sys.v_soft 2>/dev/null || echo 0)
-    metric "${METRIC_NAME_PREFIX}_interrupts_soft_total" "" "$vm_soft"
+    metric "${METRIC_NAME_PREFIX}_sys_interrupts_soft_total" "" "$vm_soft"
 
     # CPU count
-    metric_help "${METRIC_NAME_PREFIX}_cpu_count" "Number of CPUs"
-    metric_type "${METRIC_NAME_PREFIX}_cpu_count" "gauge"
-    metric "${METRIC_NAME_PREFIX}_cpu_count" "" "$ncpu"
+    metric_help "${METRIC_NAME_PREFIX}_sys_cpu_count" "Number of CPUs"
+    metric_type "${METRIC_NAME_PREFIX}_sys_cpu_count" "gauge"
+    metric "${METRIC_NAME_PREFIX}_sys_cpu_count" "" "$ncpu"
 }
