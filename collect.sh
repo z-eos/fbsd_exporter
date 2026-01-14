@@ -139,7 +139,7 @@ collect_all_slow() {
 
     # ZFS pool health and detailed status
     if [ "$ENABLE_ZFS_CORE" = "1" ] && has_zfs; then
-	run_collector "zfs_health" collect_zfs_pool_health
+
 	echo ""
     fi
 
