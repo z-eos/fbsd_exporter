@@ -47,7 +47,7 @@ collect_zpool() {
 	    printf "%s_zpool_size_bytes{name=\"%s\"} %s\n", pfx, name, size
 	    printf "%s_zpool_alloc_bytes{name=\"%s\"} %s\n", pfx, name, alloc
 	    printf "%s_zpool_free_bytes{name=\"%s\"} %s\n", pfx, name, free
-3	    printf "%s_zpool_frag{name=\"%s\"} %s\n", pfx, name, frag
+	    printf "%s_zpool_frag{name=\"%s\"} %s\n", pfx, name, frag
 	    printf "%s_zpool_dedup{name=\"%s\"} %s\n", pfx, name, dedup
 	    printf "%s_zpool_health{name=\"%s\"} %s\n", pfx, name, health
 
