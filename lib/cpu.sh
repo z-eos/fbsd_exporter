@@ -6,14 +6,15 @@
 collect_cpu() {
     [ "$ENABLE_CPU" != "1" ] && return 0
 
+    ncpu=$(sysctl -n hw.ncpu 2>/dev/null || echo 1)
+    hz=$(sysctl -n kern.clockrate 2>/dev/null | sed -n 's/.*[,{][[:space:]]*hz[[:space:]]*=[[:space:]]*\([0-9][0-9]*\).*/\1/p' || echo 128)
+
     if [ "$ENABLE_CPU_PERCPU" = "1" ]; then
 	metric_help "${METRIC_NAME_PREFIX}_cpu_percpu_time_seconds_total" "per-CPU time in seconds"
 	metric_type "${METRIC_NAME_PREFIX}_cpu_percpu_time_seconds_total" "counter"
 
 	# Get per-CPU stats using sysctl
 	# kern.cp_times: user, nice, system, interrupt, idle per CPU
-	ncpu=$(sysctl -n hw.ncpu 2>/dev/null || echo 1)
-	hz=$(sysctl -n kern.clockrate 2>/dev/null | sed -n 's/.*[,{][[:space:]]*hz[[:space:]]*=[[:space:]]*\([0-9][0-9]*\).*/\1/p' || echo 128)
 
 	sysctl -n kern.cp_times 2>/dev/null | _awk -v ncpu="$ncpu" -v hz="$hz" '
     BEGIN {
