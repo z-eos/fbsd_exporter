@@ -112,7 +112,7 @@ collect_all_fast() {
 
     # ZPOOL metrics
     if [ "$ENABLE_ZPOOL" = "1" ]; then
-	run_collector "zpol" collect_zpool
+	run_collector "zpool" collect_zpool
 	echo ""
     fi
 

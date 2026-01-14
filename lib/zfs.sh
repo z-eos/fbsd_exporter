@@ -16,8 +16,6 @@ collect_zfs() {
 	collect_zfs_arc
     fi
 
-    # Pool health and capacity (in slow collector, but include basic here)
-    collect_zfs_pools_basic
 }
 
 collect_zfs_arc() {
