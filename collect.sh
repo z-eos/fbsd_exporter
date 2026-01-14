@@ -64,7 +64,7 @@ fi
 
 if [ -z $SCOPE ]; then
     SCOPE='fast'
-    LIB_FILES="${LIB_FILES} cpu.sh memory.sh disk.sh filesystem.sh zfs.sh process.sh"
+    LIB_FILES="${LIB_FILES} cpu.sh memory.sh disk.sh filesystem.sh process.sh"
 fi
 
 # Load configuration and libraries
@@ -110,18 +110,6 @@ collect_all_fast() {
 	echo ""
     fi
 
-    # ZPOOL metrics
-    if [ "$ENABLE_ZPOOL" = "1" ]; then
-	run_collector "zpool" collect_zpool
-	echo ""
-    fi
-
-    # ZFS core metrics (ARC, basic pool stats)
-    if [ "$ENABLE_ZFS_CORE" = "1" ]; then
-	run_collector "zfs" collect_zfs
-	echo ""
-    fi
-
     # Process metrics
     if [ "$ENABLE_PROCESS" = "1" ]; then
 	run_collector "process" collect_process
@@ -136,6 +124,18 @@ collect_all_slow() {
     echo "# Slow metrics collected at $(now)"
     echo "# Hostname: ${HOSTNAME}"
     echo ""
+
+    # ZPOOL metrics
+    if [ "$ENABLE_ZPOOL" = "1" ]; then
+	run_collector "zpool" collect_zpool
+	echo ""
+    fi
+
+    # ZFS core metrics (ARC, basic pool stats)
+    if [ "$ENABLE_ZFS_CORE" = "1" ]; then
+	run_collector "zfs" collect_zfs
+	echo ""
+    fi
 
     # ZFS pool health and detailed status
     if [ "$ENABLE_ZFS_CORE" = "1" ] && has_zfs; then

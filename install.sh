@@ -66,7 +66,7 @@ fi
 
 # Create empty metric files
 echo "==> Creating initial metric files"
-for file in fast.prom slow.prom userspace.prom; do
+for file in fbsd_exporter_fast.prom fbsd_exporter_slow.prom fbsd_exporter_userspace.prom; do
     touch "${METRICS_DIR}/${file}"
     chown "root:wheel" "${METRICS_DIR}/${file}"
     chmod 644 "${METRICS_DIR}/${file}"
