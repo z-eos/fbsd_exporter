@@ -19,17 +19,17 @@ collect_disk() {
 }
 
 collect_zpool_iostat() {
-    metric_help "${METRIC_NAME_PREFIX}_zpool_allocated_bytes" "Allocated space in pool"
-    metric_type "${METRIC_NAME_PREFIX}_zpool_allocated_bytes" "gauge"
+    metric_help "${METRIC_NAME_PREFIX}_zpool_iostat_allocated_bytes" "Allocated space in pool"
+    metric_type "${METRIC_NAME_PREFIX}_zpool_iostat_allocated_bytes" "gauge"
 
-    metric_help "${METRIC_NAME_PREFIX}_zpool_free_bytes" "Free space in pool"
-    metric_type "${METRIC_NAME_PREFIX}_zpool_free_bytes" "gauge"
+    metric_help "${METRIC_NAME_PREFIX}_zpool_iostat_free_bytes" "Free space in pool"
+    metric_type "${METRIC_NAME_PREFIX}_zpool_iostat_free_bytes" "gauge"
 
-    metric_help "${METRIC_NAME_PREFIX}_zpool_operations_total" "Total I/O operations"
-    metric_type "${METRIC_NAME_PREFIX}_zpool_operations_total" "counter"
+    metric_help "${METRIC_NAME_PREFIX}_zpool_iostat_operations_total" "Total I/O operations"
+    metric_type "${METRIC_NAME_PREFIX}_zpool_iostat_operations_total" "counter"
 
-    metric_help "${METRIC_NAME_PREFIX}_zpool_bytes_total" "Total I/O bytes"
-    metric_type "${METRIC_NAME_PREFIX}_zpool_bytes_total" "counter"
+    metric_help "${METRIC_NAME_PREFIX}_zpool_iostat_bytes_total" "Total I/O bytes"
+    metric_type "${METRIC_NAME_PREFIX}_zpool_iostat_bytes_total" "counter"
 
     # Get pool-level stats
     zpool iostat -Hp 2>/dev/null | _awk 'NR > 1 && NF >= 7 {
@@ -41,21 +41,21 @@ collect_zpool_iostat() {
 	read_bw = $6
 	write_bw = $7
 
-	printf "%s_zpool_allocated_bytes{pool=\"%s\"} %s\n", pfx, pool, alloc
-	printf "%s_zpool_free_bytes{pool=\"%s\"} %s\n", pfx, pool, free
-	printf "%s_zpool_operations_total{pool=\"%s\",operation=\"read\"} %s\n", pfx, pool, read_ops
-	printf "%s_zpool_operations_total{pool=\"%s\",operation=\"write\"} %s\n", pfx, pool, write_ops
-	printf "%s_zpool_bytes_total{pool=\"%s\",operation=\"read\"} %s\n", pfx, pool, read_bw
-	printf "%s_zpool_bytes_total{pool=\"%s\",operation=\"write\"} %s\n", pfx, pool, write_bw
+	printf "%s_zpool_iostat_allocated_bytes{pool=\"%s\"} %s\n", pfx, pool, alloc
+	printf "%s_zpool_iostat_free_bytes{pool=\"%s\"} %s\n", pfx, pool, free
+	printf "%s_zpool_iostat_operations_total{pool=\"%s\",operation=\"read\"} %s\n", pfx, pool, read_ops
+	printf "%s_zpool_iostat_operations_total{pool=\"%s\",operation=\"write\"} %s\n", pfx, pool, write_ops
+	printf "%s_zpool_iostat_bytes_total{pool=\"%s\",operation=\"read\"} %s\n", pfx, pool, read_bw
+	printf "%s_zpool_iostat_bytes_total{pool=\"%s\",operation=\"write\"} %s\n", pfx, pool, write_bw
     }'
 
     # Per-vdev stats if enabled
     if [ "$DISK_INCLUDE_VDEV" = "1" ]; then
-	metric_help "${METRIC_NAME_PREFIX}_zpool_vdev_operations_total" "Total I/O operations per vdev"
-	metric_type "${METRIC_NAME_PREFIX}_zpool_vdev_operations_total" "counter"
+	metric_help "${METRIC_NAME_PREFIX}_zpool_iostat_vdev_operations_total" "Total I/O operations per vdev"
+	metric_type "${METRIC_NAME_PREFIX}_zpool_iostat_vdev_operations_total" "counter"
 
-	metric_help "${METRIC_NAME_PREFIX}_zpool_vdev_bytes_total" "Total I/O bytes per vdev"
-	metric_type "${METRIC_NAME_PREFIX}_zpool_vdev_bytes_total" "counter"
+	metric_help "${METRIC_NAME_PREFIX}_zpool_iostat_vdev_bytes_total" "Total I/O bytes per vdev"
+	metric_type "${METRIC_NAME_PREFIX}_zpool_iostat_vdev_bytes_total" "counter"
 
 	zpool list -H -o name 2>/dev/null | while read pool; do
 	    zpool iostat -Hpv "$pool" 2>/dev/null | _awk -v pool="$pool" 'NR > 1 && $1 != pool && NF >= 7 {
@@ -66,24 +66,24 @@ collect_zpool_iostat() {
 		read_bw = $6
 		write_bw = $7
 
-		printf "%s_zpool_vdev_operations_total{pool=\"%s\",vdev=\"%s\",operation=\"read\"} %s\n", pfx, pool, vdev, read_ops
-		printf "%s_zpool_vdev_operations_total{pool=\"%s\",vdev=\"%s\",operation=\"write\"} %s\n", pfx, pool, vdev, write_ops
-		printf "%s_zpool_vdev_bytes_total{pool=\"%s\",vdev=\"%s\",operation=\"read\"} %s\n", pfx, pool, vdev, read_bw
-		printf "%s_zpool_vdev_bytes_total{pool=\"%s\",vdev=\"%s\",operation=\"write\"} %s\n", pfx, pool, vdev, write_bw
+		printf "%s_zpool_iostat_vdev_operations_total{pool=\"%s\",vdev=\"%s\",operation=\"read\"} %s\n", pfx, pool, vdev, read_ops
+		printf "%s_zpool_iostat_vdev_operations_total{pool=\"%s\",vdev=\"%s\",operation=\"write\"} %s\n", pfx, pool, vdev, write_ops
+		printf "%s_zpool_iostat_vdev_bytes_total{pool=\"%s\",vdev=\"%s\",operation=\"read\"} %s\n", pfx, pool, vdev, read_bw
+		printf "%s_zpool_iostat_vdev_bytes_total{pool=\"%s\",vdev=\"%s\",operation=\"write\"} %s\n", pfx, pool, vdev, write_bw
 	    }'
 	done
     fi
 }
 
 collect_gstat() {
-    metric_help "${METRIC_NAME_PREFIX}_disk_operations_per_second" "Disk operations per second"
-    metric_type "${METRIC_NAME_PREFIX}_disk_operations_per_second" "gauge"
+    metric_help "${METRIC_NAME_PREFIX}_disk_gstat_operations_per_second" "Disk operations per second"
+    metric_type "${METRIC_NAME_PREFIX}_disk_gstat_operations_per_second" "gauge"
 
-    metric_help "${METRIC_NAME_PREFIX}_disk_bytes_per_second" "Disk bytes per second"
-    metric_type "${METRIC_NAME_PREFIX}_disk_bytes_per_second" "gauge"
+    metric_help "${METRIC_NAME_PREFIX}_disk_gstat_bytes_per_second" "Disk bytes per second"
+    metric_type "${METRIC_NAME_PREFIX}_disk_gstat_bytes_per_second" "gauge"
 
-    metric_help "${METRIC_NAME_PREFIX}_disk_busy_percent" "Disk busy percentage"
-    metric_type "${METRIC_NAME_PREFIX}_disk_busy_percent" "gauge"
+    metric_help "${METRIC_NAME_PREFIX}_disk_gstat_busy_percent" "Disk busy percentage"
+    metric_type "${METRIC_NAME_PREFIX}_disk_gstat_busy_percent" "gauge"
 
     # Run gstat for the configured interval
     interval=${DISK_GSTAT_INTERVAL:-1s}
@@ -122,12 +122,12 @@ collect_gstat() {
 	read_bps = read_kbps * 1024
 	write_bps = write_kbps * 1024
 
-	printf "%s_disk_operations_per_second{device=\"%s\",operation=\"read\"} %s\n", pfx, device, read_ops
-	printf "%s_disk_operations_per_second{device=\"%s\",operation=\"write\"} %s\n", pfx, device, write_ops
-	printf "%s_disk_bytes_per_second{device=\"%s\",operation=\"read\"} %.0f\n", pfx, device, read_bps
-	printf "%s_disk_bytes_per_second{device=\"%s\",operation=\"write\"} %.0f\n", pfx, device, write_bps
-	printf "%s_disk_busy_percent{device=\"%s\"} %s\n", pfx, device, busy
-	printf "%s_disk_queue_length{device=\"%s\"} %s\n", pfx, device, queue
+	printf "%s_disk_gstat_operations_per_second{device=\"%s\",operation=\"read\"} %s\n", pfx, device, read_ops
+	printf "%s_disk_gstat_operations_per_second{device=\"%s\",operation=\"write\"} %s\n", pfx, device, write_ops
+	printf "%s_disk_gstat_bytes_per_second{device=\"%s\",operation=\"read\"} %.0f\n", pfx, device, read_bps
+	printf "%s_disk_gstat_bytes_per_second{device=\"%s\",operation=\"write\"} %.0f\n", pfx, device, write_bps
+	printf "%s_disk_gstat_busy_percent{device=\"%s\"} %s\n", pfx, device, busy
+	printf "%s_disk_gstat_queue_length{device=\"%s\"} %s\n", pfx, device, queue
     }'
 }
 
@@ -136,14 +136,14 @@ collect_iostat() {
 	return 0
     fi
 
-    metric_help "${METRIC_NAME_PREFIX}_disk_operations_per_second" "Disk operations per second"
-    metric_type "${METRIC_NAME_PREFIX}_disk_operations_per_second" "gauge"
+    metric_help "${METRIC_NAME_PREFIX}_disk_iostat_operations_per_second" "Disk operations per second"
+    metric_type "${METRIC_NAME_PREFIX}_disk_iostat_operations_per_second" "gauge"
 
-    metric_help "${METRIC_NAME_PREFIX}_disk_bytes_per_second" "Disk bytes per second"
-    metric_type "${METRIC_NAME_PREFIX}_disk_bytes_per_second" "gauge"
+    metric_help "${METRIC_NAME_PREFIX}_disk_iostat_bytes_per_second" "Disk bytes per second"
+    metric_type "${METRIC_NAME_PREFIX}_disk_iostat_bytes_per_second" "gauge"
 
-    metric_help "${METRIC_NAME_PREFIX}_disk_busy_percent" "Disk busy percentage"
-    metric_type "${METRIC_NAME_PREFIX}_disk_busy_percent" "gauge"
+    metric_help "${METRIC_NAME_PREFIX}_disk_iostat_busy_percent" "Disk busy percentage"
+    metric_type "${METRIC_NAME_PREFIX}_disk_iostat_busy_percent" "gauge"
 
     # iostat output (extended format):
     # device     r/s   w/s    kr/s    kw/s qlen  svc_t  %b
@@ -170,12 +170,12 @@ collect_iostat() {
 	read_bps = read_kbps * 1024
 	write_bps = write_kbps * 1024
 
-	printf "%s_disk_operations_per_second{device=\"%s\",operation=\"read\"} %s\n", pfx, device, read_ops
-	printf "%s_disk_operations_per_second{device=\"%s\",operation=\"write\"} %s\n", pfx, device, write_ops
-	printf "%s_disk_bytes_per_second{device=\"%s\",operation=\"read\"} %.0f\n", pfx, device, read_bps
-	printf "%s_disk_bytes_per_second{device=\"%s\",operation=\"write\"} %.0f\n", pfx, device, write_bps
-	printf "%s_disk_busy_percent{device=\"%s\"} %s\n", pfx, device, busy
-	printf "%s_disk_queue_length{device=\"%s\"} %s\n", pfx, device, queue
-	printf "%s_disk_service_time_ms{device=\"%s\"} %s\n", pfx, device, svc_time
+	printf "%s_disk_iostat_operations_per_second{device=\"%s\",operation=\"read\"} %s\n", pfx, device, read_ops
+	printf "%s_disk_iostat_operations_per_second{device=\"%s\",operation=\"write\"} %s\n", pfx, device, write_ops
+	printf "%s_disk_iostat_bytes_per_second{device=\"%s\",operation=\"read\"} %.0f\n", pfx, device, read_bps
+	printf "%s_disk_iostat_bytes_per_second{device=\"%s\",operation=\"write\"} %.0f\n", pfx, device, write_bps
+	printf "%s_disk_iostat_busy_percent{device=\"%s\"} %s\n", pfx, device, busy
+	printf "%s_disk_iostat_queue_length{device=\"%s\"} %s\n", pfx, device, queue
+	printf "%s_disk_iostat_service_time_ms{device=\"%s\"} %s\n", pfx, device, svc_time
     }'
 }
