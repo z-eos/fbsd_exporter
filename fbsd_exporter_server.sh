@@ -6,6 +6,8 @@
 
 set -e
 
+VERSION="0.5.6"
+
 CONFIG_FILE="/usr/local/etc/fbsd_exporter.conf"
 
 # Parse command line options
@@ -161,7 +163,7 @@ done
 # Server metadata
 echo "# HELP ${METRIC_NAME_PREFIX}_metrics_server_info Metrics server information"
 echo "# TYPE ${METRIC_NAME_PREFIX}_metrics_server_info gauge"
-echo "${METRIC_NAME_PREFIX}_metrics_server_info{version=\"1.0\",hostname=\"$(hostname)\"} 1"
+echo "${METRIC_NAME_PREFIX}_metrics_server_info{version=\"${VERSION}\",hostname=\"$(hostname)\"} 1"
 echo ""
 
 echo "# HELP ${METRIC_NAME_PREFIX}_metrics_server_scrape_timestamp_seconds Timestamp of this scrape"

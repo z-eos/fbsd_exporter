@@ -23,8 +23,7 @@ collect_filesystem() {
     if has_zfs; then
 
 	echo ${ZFS_LIST_DEPTH:+"-d $ZFS_LIST_DEPTH"}
-	# here we deal with type=filesystem only, movin `-t TYPE' to config file hasn't been considered yet
-	zfs list -Hp -o name,used,avail,refer,mountpoint -t fs ${ZFS_LIST_DEPTH:+-d $ZFS_LIST_DEPTH} 2>/dev/null | \
+	zfs list -Hp -o name,used,avail,refer,mountpoint ${ZFS_LIST_DEPTH:+-d $ZFS_LIST_DEPTH} 2>/dev/null | \
 	_awk -v exclude_paths="$exclude_paths_pattern" '
 	$5 != "-" && $5 != "none" && $5 != "legacy" {
 	    dataset = $1
