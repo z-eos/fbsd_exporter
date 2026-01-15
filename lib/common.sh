@@ -21,10 +21,6 @@ fi
 
 VERSION_ID_DOTLESS=$(echo $VERSION_ID | tr -d '.')
 
-# if [ -f /usr/local/etc/freebsd-metrics.conf ]; then
-#     . /usr/local/etc/freebsd-metrics.conf
-# fi
-
 # Set hostname
 if [ -z "$HOSTNAME" ]; then
     HOSTNAME=$(hostname)

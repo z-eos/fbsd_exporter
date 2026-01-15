@@ -27,12 +27,26 @@ collect_process() {
 	names_pattern=$(echo "$PROCESS_NAMES" | sed 's/ /|/g')
     fi
 
-    # Get process list
+    # First, initialize counters for all expected processes to 0
+    if [ -n "$PROCESS_NAMES" ]; then
+	for proc_name in $PROCESS_NAMES; do
+	    echo "${METRIC_NAME_PREFIX}_process_count{name=\"${proc_name}\"} 0"
+	    if [ "$PROCESS_INCLUDE_AGGREGATE" = "1" ]; then
+		echo "${METRIC_NAME_PREFIX}_process_total_cpu_percent{name=\"${proc_name}\"} 0"
+		echo "${METRIC_NAME_PREFIX}_process_total_memory_bytes{name=\"${proc_name}\"} 0"
+	    fi
+	done
+    fi
+
+    # Get process list and update metrics
     ps auxww 2>/dev/null | \
     _awk -v names="$names_pattern" \
 	-v patterns="$PROCESS_PATTERNS" \
-	-v aggregate="$PROCESS_INCLUDE_AGGREGATE" '
-    BEGIN { count = 0 }
+	-v aggregate="$PROCESS_INCLUDE_AGGREGATE" \
+	-v pfx="${METRIC_NAME_PREFIX}" '
+    BEGIN {
+	count = 0
+    }
     NR > 1 {
 	user = $1
 	pid = $2
@@ -67,15 +81,15 @@ collect_process() {
 	printf "%s_process_memory_bytes{pid=\"%s\",name=\"%s\",user=\"%s\",type=\"rss\"} %s\n", pfx, pid, command, user, rss
 
 	# Aggregate by name
-	if (aggregate) {
+	if (aggregate == "1") {
 	    proc_count[command]++
 	    proc_cpu[command] += cpu
 	    proc_mem[command] += rss
 	}
     }
     END {
-	# Output aggregated metrics
-	if (aggregate) {
+	# Output aggregated metrics (these will overwrite the zeros)
+	if (aggregate == "1") {
 	    for (name in proc_count) {
 		printf "%s_process_count{name=\"%s\"} %d\n", pfx, name, proc_count[name]
 		printf "%s_process_total_cpu_percent{name=\"%s\"} %.2f\n", pfx, name, proc_cpu[name]

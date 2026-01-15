@@ -36,7 +36,7 @@ ENABLE_PROCESS=1
 # Prefer zpool iostat for ZFS, gstat for non-ZFS #
 ##################################################
 DISK_PREFER_ZPOOL=1
-DISK_INCLUDE_VDEV=0  # Include per-vdev metrics (can be verbose)
+DISK_INCLUDE_VDEV=1  # Include per-vdev metrics (can be verbose)
 DISK_GSTAT_INTERVAL="1s"  # gstat option -I
 
 #######################
