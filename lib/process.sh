@@ -25,27 +25,27 @@ collect_process() {
     # Build pattern for matching
     if [ -n "$PROCESS_NAMES" ]; then
 	names_pattern=$(echo "$PROCESS_NAMES" | sed 's/ /|/g')
+	# Pass expected names to awk
+	expected_names="$PROCESS_NAMES"
+    else
+	expected_names=""
     fi
 
-    # First, initialize counters for all expected processes to 0
-    if [ -n "$PROCESS_NAMES" ]; then
-	for proc_name in $PROCESS_NAMES; do
-	    echo "${METRIC_NAME_PREFIX}_process_count{name=\"${proc_name}\"} 0"
-	    if [ "$PROCESS_INCLUDE_AGGREGATE" = "1" ]; then
-		echo "${METRIC_NAME_PREFIX}_process_total_cpu_percent{name=\"${proc_name}\"} 0"
-		echo "${METRIC_NAME_PREFIX}_process_total_memory_bytes{name=\"${proc_name}\"} 0"
-	    fi
-	done
-    fi
-
-    # Get process list and update metrics
+    # Get process list and generate metrics
     ps auxww 2>/dev/null | \
     _awk -v names="$names_pattern" \
 	-v patterns="$PROCESS_PATTERNS" \
 	-v aggregate="$PROCESS_INCLUDE_AGGREGATE" \
-	-v pfx="${METRIC_NAME_PREFIX}" '
+	-v expected="$expected_names" '
     BEGIN {
 	count = 0
+	# Parse expected process names into array
+	if (expected) {
+	    split(expected, exp_array)
+	    for (i in exp_array) {
+		expected_procs[exp_array[i]] = 1
+	    }
+	}
     }
     NR > 1 {
 	user = $1
@@ -70,6 +70,11 @@ collect_process() {
 
 	count++
 
+	# Mark this process as found
+	if (expected_procs[command]) {
+	    found_procs[command] = 1
+	}
+
 	# Escape quotes
 	gsub(/"/, "\\\"", user)
 	gsub(/"/, "\\\"", command)
@@ -88,12 +93,23 @@ collect_process() {
 	}
     }
     END {
-	# Output aggregated metrics (these will overwrite the zeros)
+	# Output aggregated metrics for found processes
 	if (aggregate == "1") {
 	    for (name in proc_count) {
 		printf "%s_process_count{name=\"%s\"} %d\n", pfx, name, proc_count[name]
 		printf "%s_process_total_cpu_percent{name=\"%s\"} %.2f\n", pfx, name, proc_cpu[name]
 		printf "%s_process_total_memory_bytes{name=\"%s\"} %.0f\n", pfx, name, proc_mem[name]
+	    }
+	}
+
+	# Output zeros for expected processes that were NOT found
+	for (name in expected_procs) {
+	    if (!found_procs[name]) {
+		printf "%s_process_count{name=\"%s\"} 0\n", pfx, name
+		if (aggregate == "1") {
+		    printf "%s_process_total_cpu_percent{name=\"%s\"} 0\n", pfx, name
+		    printf "%s_process_total_memory_bytes{name=\"%s\"} 0\n", pfx, name
+		}
 	    }
 	}
     }'
