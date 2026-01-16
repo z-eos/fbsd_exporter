@@ -154,14 +154,30 @@ collect_all_slow() {
     fi
     echo ""
 
-    # System info
+    # System info (/etc/os-release)
     metric_help "${METRIC_NAME_PREFIX}_system_info" "System information"
     metric_type "${METRIC_NAME_PREFIX}_system_info" "gauge"
-    os_version=$(uname -r 2>/dev/null || echo "unknown")
-    kernel=$(uname -v 2>/dev/null | awk '{print $1}' || echo "unknown")
-    arch=$(uname -m 2>/dev/null || echo "unknown")
 
-    metric "${METRIC_NAME_PREFIX}_system_info" "hostname=\"${HOSTNAME}\",version=\"${os_version}\",kernel=\"${kernel}\",arch=\"${arch}\"" "1"
+    _awk -F= '{
+      # Remove any surrounding quotes from the value first
+      gsub(/^"/, "", $2);
+      gsub(/"$/, "", $2);
+      # Escape any quotes inside the value
+      gsub(/"/, "\\\"", $2);
+      pairs = pairs (NR==1 ? "" : ",") $1 "=\"" $2 "\""
+    } END {
+      printf "%s_system_info{%s} 1\n", pfx, pairs
+    }' /etc/os-release
+
+    # # System info
+    # metric_help "${METRIC_NAME_PREFIX}_system_info" "System information"
+    # metric_type "${METRIC_NAME_PREFIX}_system_info" "gauge"
+    # os_version=$(uname -r 2>/dev/null || echo "unknown")
+    # kernel=$(uname -v 2>/dev/null | awk '{print $1}' || echo "unknown")
+    # arch=$(uname -m 2>/dev/null || echo "unknown")
+
+    # metric "${METRIC_NAME_PREFIX}_system_info" "hostname=\"${HOSTNAME}\",version=\"${os_version}\",kernel=\"${kernel}\",arch=\"${arch}\"" "1"
+
     echo ""
 }
 
