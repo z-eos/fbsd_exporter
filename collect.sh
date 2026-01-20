@@ -143,37 +143,6 @@ collect_all_slow() {
 	echo ""
     fi
 
-    # System uptime
-    metric_help "${METRIC_NAME_PREFIX}_system_uptime_seconds" "System uptime in seconds"
-    metric_type "${METRIC_NAME_PREFIX}_system_uptime_seconds" "gauge"
-    uptime_seconds=$(sysctl -n kern.boottime 2>/dev/null | awk '{print $4}' | tr -d ',')
-    if [ -n "$uptime_seconds" ]; then
-	current=$(now)
-	uptime=$((current - uptime_seconds))
-	metric "${METRIC_NAME_PREFIX}_system_uptime_seconds" "" "$uptime"
-    fi
-    echo ""
-
-    # System info (/etc/os-release)
-    metric_help "${METRIC_NAME_PREFIX}_system_info" "System information"
-    metric_type "${METRIC_NAME_PREFIX}_system_info" "gauge"
-    if [ -f /etc/os-release ]; then
-	_awk -F= '{
-		    # Remove any surrounding quotes from the value first
-		    gsub(/^"/, "", $2);
-		    gsub(/"$/, "", $2);
-		    # Escape any quotes inside the value
-		    gsub(/"/, "\\\"", $2);
-		    pairs = pairs (NR==1 ? "" : ",") $1 "=\"" $2 "\""
-		  } END {
-		    printf "%s_system_info{%s} 1\n", pfx, pairs
-		  }' /etc/os-release
-    else
-	OS_VERSION=$(uname -r)
-	metric "${METRIC_NAME_PREFIX}_system_info" "NAME=\"FreeBSD\",VERSION=\"$OS_VERSION\",VERSION_ID=\"${OS_VERSION:%%-*}\"" "1"
-    fi
-
-    echo ""
 }
 
 #############
@@ -266,6 +235,38 @@ main() {
 	    ;;
 
     esac
+
+    # System uptime
+    metric_help "${METRIC_NAME_PREFIX}_system_uptime_seconds" "System uptime in seconds"
+    metric_type "${METRIC_NAME_PREFIX}_system_uptime_seconds" "gauge"
+    uptime_seconds=$(sysctl -n kern.boottime 2>/dev/null | awk '{print $4}' | tr -d ',')
+    if [ -n "$uptime_seconds" ]; then
+	current=$(now)
+	uptime=$((current - uptime_seconds))
+	metric "${METRIC_NAME_PREFIX}_system_uptime_seconds" "" "$uptime"
+    fi
+    echo ""
+
+    # System info (/etc/os-release)
+    metric_help "${METRIC_NAME_PREFIX}_system_info" "System information"
+    metric_type "${METRIC_NAME_PREFIX}_system_info" "gauge"
+    if [ -f /etc/os-release ]; then
+	_awk -F= '{
+		    # Remove any surrounding quotes from the value first
+		    gsub(/^"/, "", $2);
+		    gsub(/"$/, "", $2);
+		    # Escape any quotes inside the value
+		    gsub(/"/, "\\\"", $2);
+		    pairs = pairs (NR==1 ? "" : ",") $1 "=\"" $2 "\""
+		  } END {
+		    printf "%s_system_info{%s} 1\n", pfx, pairs
+		  }' /etc/os-release
+    else
+	OS_VERSION=$(uname -r)
+	metric "${METRIC_NAME_PREFIX}_system_info" "NAME=\"FreeBSD\",VERSION=\"$OS_VERSION\",VERSION_ID=\"${OS_VERSION:%%-*}\"" "1"
+    fi
+
+    echo ""
 
 }
 
