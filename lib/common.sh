@@ -21,6 +21,7 @@ if [ -f /etc/os-release ]; then
     . /etc/os-release
 else
     VERSION_ID_DOTLESS=$(uname -r | tr -d '.')
+    VERSION_ID_DOTLESS=${VERSION_ID_DOTLESS%%-*}
 fi
 
 # Set hostname

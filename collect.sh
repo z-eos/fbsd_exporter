@@ -170,7 +170,7 @@ collect_all_slow() {
 		  }' /etc/os-release
     else
 	OS_VERSION=$(uname -r)
-	metric "${METRIC_NAME_PREFIX}_system_info" "NAME=\"FreeBSD\",VERSION=\"$OS_VERSION\",VERSION_ID=\"${OS_VERSION:%-*}\"" "1"
+	metric "${METRIC_NAME_PREFIX}_system_info" "NAME=\"FreeBSD\",VERSION=\"$OS_VERSION\",VERSION_ID=\"${OS_VERSION:%%-*}\"" "1"
     fi
 
     echo ""

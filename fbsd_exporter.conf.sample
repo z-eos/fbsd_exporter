@@ -10,7 +10,7 @@ DEBUG=0 # not used yet
 
 HOSTNAME=""  # empty = auto-detect via hostname(1)
 
-SCRIPT_DIR="/usr/local/lib/fbsd_exporter"
+SCRIPT_DIR="/usr/local/libexec/fbsd_exporter"
 METRICS_DIR="/var/spool/fbsd_exporter"
 
 # Staleness thresholds (seconds)
