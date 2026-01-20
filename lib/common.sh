@@ -17,9 +17,11 @@ if [ "${OPT_DEBUG:+x}" ] && [ -n "$OPT_DEBUG" ]; then
     DEBUG=$OPT_DEBUG
 fi
 
-. /etc/os-release
-
-VERSION_ID_DOTLESS=$(echo $VERSION_ID | tr -d '.')
+if [ -f /etc/os-release ]; then
+    . /etc/os-release
+else
+    VERSION_ID_DOTLESS=$(uname -r | tr -d '.')
+fi
 
 # Set hostname
 if [ -z "$HOSTNAME" ]; then
