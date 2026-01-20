@@ -53,16 +53,8 @@ if [ -f "fbsd_exporter_server.sh" ]; then
 fi
 
 # Install configuration file
-echo "==> Installing configuration file"
-if [ -f "fbsd_exporter.conf" ]; then
-    if [ -f "${ETC_DIR}/fbsd_exporter.conf" ]; then
-	echo "    Configuration file already exists, creating .sample"
-	install -m 644 -o root -g wheel "fbsd_exporter.conf.dist" "${ETC_DIR}/fbsd_exporter.conf.sample"
-    else
-	install -m 644 -o root -g wheel "fbsd_exporter.conf.dist" "${ETC_DIR}/fbsd_exporter.conf"
-	echo "    Installed fbsd_exporter.conf"
-    fi
-fi
+echo "==> Installing configuration .sample file"
+install -m 644 -o root -g wheel "fbsd_exporter.conf.sample" "${ETC_DIR}/"
 
 # Create empty metric files
 echo "==> Creating initial metric files"
@@ -87,7 +79,7 @@ echo "   */15 * * * * ${LIBEXEC_DIR}/collect.sh -s userspace"
 echo ""
 echo "3. Configure inetd:"
 echo "   Add to /etc/inetd.conf:"
-echo "   9101 stream tcp nowait nobody ${LIBEXEC_DIR}/fbsd_exporter_server.sh fbsd_exporter_server.sh"
+echo "   9628 stream tcp nowait nobody ${LIBEXEC_DIR}/fbsd_exporter_server.sh fbsd_exporter_server.sh"
 echo ""
 echo "   Enable inetd in /etc/rc.conf:"
 echo "   inetd_enable=\"YES\""

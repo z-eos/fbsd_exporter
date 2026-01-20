@@ -63,17 +63,14 @@ collect_process() {
 
 	# Check if matches
 	matched = 0
-	if (names && command ~ "^(" names ")$") matched = 1
-	if (patterns && $0 ~ patterns) matched = 1
+	if ((names && command ~ "^(" names ")$") || (patterns && $0 ~ patterns)) matched = 1
 
 	if (!matched) next
 
 	count++
 
 	# Mark this process as found
-	if (expected_procs[command]) {
-	    found_procs[command] = 1
-	}
+	if (expected_procs[command]) found_procs[command] = 1
 
 	# Escape quotes
 	gsub(/"/, "\\\"", user)
