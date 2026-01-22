@@ -6,7 +6,7 @@
 
 set -e
 
-VERSION="0.6.0"
+VERSION="0.6.3"
 
 CONFIG_FILE="/usr/local/etc/fbsd_exporter.conf"
 
@@ -187,7 +187,8 @@ if [ -f /etc/os-release ]; then
 		  }' /etc/os-release
 else
     OS_VERSION=$(uname -r)
-    metric "${METRIC_NAME_PREFIX}_system_info" "NAME=\"FreeBSD\",VERSION=\"$OS_VERSION\",VERSION_ID=\"$(echo ${OS_VERSION%%-*} | tr -d '.')\"" "1"
+    OS_VERSION_ID=$(echo ${OS_VERSION%%-*} | tr -d '.')
+    metric "${METRIC_NAME_PREFIX}_system_info" "NAME=\"FreeBSD\",VERSION=\"$OS_VERSION\",VERSION_ID=\"${OS_VERSION_ID}\"" "1"
 fi
 
 echo ""
