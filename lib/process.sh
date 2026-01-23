@@ -110,4 +110,17 @@ collect_process() {
 	    }
 	}
     }'
+
+    for process in `echo $PROCESS_NAMES`;do
+	case "$process" in
+	    openvpn)
+		if [ -n "$PROCESS_NAME_OPENVPN_CONFIGS" ]; then
+		    metric_help "${METRIC_NAME_PREFIX}_process_clients" "Number of OpenVPN clients connected"
+		    metric_type "${METRIC_NAME_PREFIX}_process_clients" "gauge"
+		    metric "${METRIC_NAME_PREFIX}_process_clients_number" "name=\"$process\"" $(grep '^status ' $PROCESS_NAME_OPENVPN_CONFIGS | cut -d' ' -f2 | xargs grep '^CLIENT_LIST' | wc -l)
+		fi
+		;;
+	esac
+    done
+
 }

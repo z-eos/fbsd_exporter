@@ -64,3 +64,7 @@ ZFS_USERSPACE_TYPES="user group"  # user, group, project
 PROCESS_NAMES="firefox clex zsh"  # Space-separated
 PROCESS_PATTERNS=""  # Extended regex patterns
 PROCESS_INCLUDE_AGGREGATE=1  # Aggregate metrics by name
+
+# PROCESS_NAME_OPENVPN_CONFIGS="/usr/local/etc/openvpn/*.conf"
+
+#
