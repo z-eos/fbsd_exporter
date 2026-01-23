@@ -22,15 +22,15 @@ MAX_AGE_USERSPACE=1800  # 30 minutes
 # Module toggles (1=enabled, 0=disabled) #
 ##########################################
 ENABLE_CPU=1
-ENABLE_CPU_PERCPU_TIME=0
 ENABLE_CPU_PERCPU_TEMPERATURE=0
-ENABLE_MEMORY=1
+ENABLE_CPU_PERCPU_TIME=0
 ENABLE_DISK_IO=1
 ENABLE_FILESYSTEM=1
-ENABLE_ZPOOL=1
+ENABLE_MEMORY=1
+ENABLE_PROCESS=1
 ENABLE_ZFS_CORE=1
 ENABLE_ZFS_USERSPACE=1
-ENABLE_PROCESS=1
+ENABLE_ZPOOL=1
 
 ##################################################
 # Disk I/O settings				 #
@@ -61,9 +61,9 @@ ZFS_USERSPACE_TYPES="user group"  # user, group, project
 ######################
 # Process monitoring #
 ######################
+PROCESS_INCLUDE_AGGREGATE=1  # Aggregate metrics by name
 PROCESS_NAMES="firefox clex zsh"  # Space-separated
 PROCESS_PATTERNS=""  # Extended regex patterns
-PROCESS_INCLUDE_AGGREGATE=1  # Aggregate metrics by name
 
 # PROCESS_NAME_OPENVPN_CONFIGS="/usr/local/etc/openvpn/*.conf"
 

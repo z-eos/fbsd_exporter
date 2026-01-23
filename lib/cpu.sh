@@ -43,7 +43,7 @@ collect_cpu() {
 	metric_type "${METRIC_NAME_PREFIX}_cpu_percpu_temperature_total" "gauge"
 
 	# Get per-CPU temperature
-	for i in `seq 0 $ncpu`; do
+	for i in `seq 0 $((ncpu-1))`; do
 	    t=$(sysctl -n dev.cpu.$i.temperature)
 	    metric "${METRIC_NAME_PREFIX}_cpu_percpu_temperature_total" "cpu=\"$i\"" "${t%?}"
 	done
