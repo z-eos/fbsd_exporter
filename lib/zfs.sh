@@ -35,11 +35,11 @@ collect_zfs_arc() {
     metric_type "${METRIC_NAME_PREFIX}_zfs_arc_misses_total" "counter"
 
     # Read ARC stats from sysctl
-    arc_size=$(sysctl -n kstat.zfs.misc.arcstats.size 2>/dev/null || echo 0)
-    arc_target=$(sysctl -n kstat.zfs.misc.arcstats.c 2>/dev/null || echo 0)
-    arc_max=$(sysctl -n kstat.zfs.misc.arcstats.c_max 2>/dev/null || echo 0)
-    arc_hits=$(sysctl -n kstat.zfs.misc.arcstats.hits 2>/dev/null || echo 0)
-    arc_misses=$(sysctl -n kstat.zfs.misc.arcstats.misses 2>/dev/null || echo 0)
+    arc_size=$(sysctl -n kstat.zfs.misc.arcstats.size || echo 0)
+    arc_target=$(sysctl -n kstat.zfs.misc.arcstats.c || echo 0)
+    arc_max=$(sysctl -n kstat.zfs.misc.arcstats.c_max || echo 0)
+    arc_hits=$(sysctl -n kstat.zfs.misc.arcstats.hits || echo 0)
+    arc_misses=$(sysctl -n kstat.zfs.misc.arcstats.misses || echo 0)
 
     metric "${METRIC_NAME_PREFIX}_zfs_arc_size_bytes" "" "$arc_size"
     metric "${METRIC_NAME_PREFIX}_zfs_arc_target_bytes" "" "$arc_target"
@@ -59,7 +59,7 @@ collect_zfs_arc() {
     fi
 
     # L2ARC stats if available
-    l2arc_hits=$(sysctl -n kstat.zfs.misc.arcstats.l2_hits 2>/dev/null || echo 0)
+    l2arc_hits=$(sysctl -n kstat.zfs.misc.arcstats.l2_hits || echo 0)
     if [ "$l2arc_hits" != "0" ]; then
 	metric_help "${METRIC_NAME_PREFIX}_zfs_l2arc_hits_total" "L2ARC hits"
 	metric_type "${METRIC_NAME_PREFIX}_zfs_l2arc_hits_total" "counter"
@@ -70,8 +70,8 @@ collect_zfs_arc() {
 	metric_help "${METRIC_NAME_PREFIX}_zfs_l2arc_size_bytes" "L2ARC size in bytes"
 	metric_type "${METRIC_NAME_PREFIX}_zfs_l2arc_size_bytes" "gauge"
 
-	l2arc_misses=$(sysctl -n kstat.zfs.misc.arcstats.l2_misses 2>/dev/null || echo 0)
-	l2arc_size=$(sysctl -n kstat.zfs.misc.arcstats.l2_size 2>/dev/null || echo 0)
+	l2arc_misses=$(sysctl -n kstat.zfs.misc.arcstats.l2_misses || echo 0)
+	l2arc_size=$(sysctl -n kstat.zfs.misc.arcstats.l2_size || echo 0)
 
 	metric "${METRIC_NAME_PREFIX}_zfs_l2arc_hits_total" "" "$l2arc_hits"
 	metric "${METRIC_NAME_PREFIX}_zfs_l2arc_misses_total" "" "$l2arc_misses"

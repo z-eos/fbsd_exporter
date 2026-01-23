@@ -23,7 +23,7 @@ collect_filesystem() {
     if has_zfs; then
 
 	echo ${ZFS_LIST_DEPTH:+"-d $ZFS_LIST_DEPTH"}
-	zfs list -Hp -o name,used,avail,refer,mountpoint ${ZFS_LIST_DEPTH:+-d $ZFS_LIST_DEPTH} 2>/dev/null | \
+	zfs list -Hp -o name,used,avail,refer,mountpoint ${ZFS_LIST_DEPTH:+-d $ZFS_LIST_DEPTH} | \
 	_awk -v exclude_paths="$exclude_paths_pattern" '
 	$5 != "-" && $5 != "none" && $5 != "legacy" {
 	    dataset = $1
@@ -49,7 +49,7 @@ collect_filesystem() {
     else
 
 	# Collect non-ZFS filesystems from df
-	df -kT 2>/dev/null | \
+	df -kT | \
 	    _awk -v exclude_types="$exclude_types_pattern" -v exclude_paths="$exclude_paths_pattern" '
     NR > 1 && $2 != "zfs" {
 	device = $1

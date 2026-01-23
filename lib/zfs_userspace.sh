@@ -52,7 +52,7 @@ collect_userspace_type() {
     metric_type "$metric_name" "gauge"
 
     # Run the command and filter by threshold
-    $command -Hp -o used,name "$dataset" 2>/dev/null | \
+    $command -Hp -o used,name "$dataset" | \
     awk -v dataset="$dataset" \
 	-v label="$label_name" \
 	-v min_bytes="$ZFS_USERSPACE_MIN_BYTES" \

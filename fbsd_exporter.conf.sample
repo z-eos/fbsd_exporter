@@ -7,6 +7,7 @@
 # Core settings #
 #################
 DEBUG=0 # not used yet
+DEBUG_LOG="/var/log/fbsd_exporter-debug.log"
 
 HOSTNAME=""  # empty = auto-detect via hostname(1)
 

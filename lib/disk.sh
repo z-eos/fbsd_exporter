@@ -32,7 +32,7 @@ collect_zpool_iostat() {
     metric_type "${METRIC_NAME_PREFIX}_zpool_iostat_bytes_total" "counter"
 
     # Get pool-level stats
-    zpool iostat -Hp 2>/dev/null | _awk 'NR > 1 && NF >= 7 {
+    zpool iostat -Hp | _awk 'NR > 1 && NF >= 7 {
 	pool = $1
 	alloc = $2
 	free = $3
@@ -57,8 +57,8 @@ collect_zpool_iostat() {
 	metric_help "${METRIC_NAME_PREFIX}_zpool_iostat_vdev_bytes_total" "Total I/O bytes per vdev"
 	metric_type "${METRIC_NAME_PREFIX}_zpool_iostat_vdev_bytes_total" "counter"
 
-	zpool list -H -o name 2>/dev/null | while read pool; do
-	    zpool iostat -Hpv "$pool" 2>/dev/null | _awk -v pool="$pool" 'NR > 1 && $1 != pool && NF >= 7 {
+	zpool list -H -o name | while read pool; do
+	    zpool iostat -Hpv "$pool" | _awk -v pool="$pool" 'NR > 1 && $1 != pool && NF >= 7 {
 		vdev = $1
 		gsub(/^  */, "", vdev)  # Remove leading spaces
 		read_ops = $4
@@ -93,7 +93,7 @@ collect_gstat() {
     #  L(q)  ops/s    r/s   kBps   ms/r    w/s   kBps   ms/w    d/s   kBps   ms/d   %busy Name
     #     0      0      0      0    0.0      0      0    0.0      0      0    0.0    0.0  da0
 
-    gstat -bdp -I "${interval}" 2>/dev/null | _awk -v interval="$interval" '
+    gstat -bdp -I "${interval}" | _awk -v interval="$interval" '
     # Skip header lines
     /^dT:/ { next }
     /L\(q\)/ { next }
@@ -148,7 +148,7 @@ collect_iostat() {
     # iostat output (extended format):
     # device     r/s   w/s    kr/s    kw/s qlen  svc_t  %b
 
-    iostat -x -w 1 -c 2 2>/dev/null | _awk '
+    iostat -x -w 1 -c 2 | _awk '
     # Skip until we see the second iteration (to get rates, not totals)
     /^device/ { header_count++; next }
 

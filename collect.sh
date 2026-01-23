@@ -5,6 +5,8 @@
 
 set -e
 
+exec 2>$DEBUG_LOG
+
 CONFIG_FILE="/usr/local/etc/fbsd_exporter.conf"
 
 # default, mandatory for each scope

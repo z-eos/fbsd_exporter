@@ -61,7 +61,7 @@ is_stale() {
 
     [ ! -f "$file" ] && return 0  # Missing = stale
 
-    file_time=$(stat -f %m "$file" 2>/dev/null || echo 0)
+    file_time=$(stat -f %m "$file" || echo 0)
     current_time=$(date +%s)
     age=$((current_time - file_time))
 
@@ -72,7 +72,7 @@ is_stale() {
 get_age() {
     file="$1"
     [ ! -f "$file" ] && echo "999999" && return
-    file_time=$(stat -f %m "$file" 2>/dev/null || echo 0)
+    file_time=$(stat -f %m "$file" || echo 0)
     current_time=$(date +%s)
     echo $((current_time - file_time))
 }
@@ -129,7 +129,7 @@ safe_cat() {
     fi
 
     # Try to cat the file
-    if cat "$file" 2>/dev/null; then
+    if cat "$file"; then
 	echo ""
 	echo "# File ${name} served successfully"
 	echo "${METRIC_NAME_PREFIX}_metrics_file_status{file=\"${name}\",status=\"ok\"} 1"
@@ -163,7 +163,7 @@ done
 # System uptime
 metric_help "${METRIC_NAME_PREFIX}_system_uptime_seconds" "System uptime in seconds"
 metric_type "${METRIC_NAME_PREFIX}_system_uptime_seconds" "gauge"
-uptime_seconds=$(sysctl -n kern.boottime 2>/dev/null | awk '{print $4}' | tr -d ',')
+uptime_seconds=$(sysctl -n kern.boottime | awk '{print $4}' | tr -d ',')
 if [ -n "$uptime_seconds" ]; then
     current=$(now)
     uptime=$((current - uptime_seconds))

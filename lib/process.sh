@@ -32,7 +32,7 @@ collect_process() {
     fi
 
     # Get process list and generate metrics
-    ps auxww 2>/dev/null | \
+    ps auxww | \
     _awk -v names="$names_pattern" \
 	-v patterns="$PROCESS_PATTERNS" \
 	-v aggregate="$PROCESS_INCLUDE_AGGREGATE" \
