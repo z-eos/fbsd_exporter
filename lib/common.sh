@@ -19,11 +19,11 @@ fi
 
 if [ -f /etc/os-release ]; then
     . /etc/os-release
-    VERSION_ID_DOTLESS=${VERSION_ID%%-*}
+    VERSION_ID_DOTLESS=$VERSION_ID
 else
     VERSION_ID_DOTLESS=$(uname -r | tr -d '.')
-    VERSION_ID_DOTLESS=${VERSION_ID_DOTLESS%%-*}
 fi
+VERSION_ID_DOTLESS=$(echo ${VERSION_ID_DOTLESS%%-*} | tr -d '.')
 
 # Set hostname
 if [ -z "$HOSTNAME" ]; then

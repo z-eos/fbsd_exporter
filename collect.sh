@@ -5,8 +5,6 @@
 
 set -e
 
-exec 2>$DEBUG_LOG
-
 CONFIG_FILE="/usr/local/etc/fbsd_exporter.conf"
 
 # default, mandatory for each scope
@@ -56,6 +54,9 @@ if [ ! -e "$CONFIG_FILE" ]; then
 fi
 
 . $CONFIG_FILE
+
+touch "$DEBUG_LOG"
+exec 2>"$DEBUG_LOG"
 
 if [ "${OPT_METRICS_DIR:+x}" = x ] && [ -n "$OPT_METRICS_DIR" ]; then
     METRICS_DIR=$OPT_METRICS_DIR
