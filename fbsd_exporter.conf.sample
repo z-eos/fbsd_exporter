@@ -22,7 +22,8 @@ MAX_AGE_USERSPACE=1800  # 30 minutes
 # Module toggles (1=enabled, 0=disabled) #
 ##########################################
 ENABLE_CPU=1
-ENABLE_CPU_PERCPU=0
+ENABLE_CPU_PERCPU_TIME=0
+ENABLE_CPU_PERCPU_TEMPERATURE=0
 ENABLE_MEMORY=1
 ENABLE_DISK_IO=1
 ENABLE_FILESYSTEM=1
