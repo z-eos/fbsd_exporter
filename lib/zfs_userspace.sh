@@ -16,6 +16,37 @@ collect_zfs_userspace() {
 	return 0
     fi
 
+    if echo "$ZFS_USERSPACE_TYPES" | grep -q user; then
+	metric_name_bytes="${METRIC_NAME_PREFIX}_zfs_userspace_bytes"
+	metric_help "$metric_name_bytes" "ZFS userspace usage in bytes"
+	metric_type "$metric_name_bytes" "gauge"
+
+	metric_name_objects="${METRIC_NAME_PREFIX}_zfs_userspace_objects"
+	metric_help "$metric_name_objects" "ZFS userspace usage in objects"
+	metric_type "$metric_name_objects" "gauge"
+    fi
+
+    if echo "$ZFS_USERSPACE_TYPES" | grep -q group; then
+	metric_name_bytes="${METRIC_NAME_PREFIX}_zfs_groupspace_bytes"
+	metric_help "$metric_name_bytes" "ZFS groupspace usage in bytes"
+	metric_type "$metric_name_bytes" "gauge"
+
+	metric_name_objects="${METRIC_NAME_PREFIX}_zfs_groupspace_objects"
+	metric_help "$metric_name_objects" "ZFS groupspace usage in objects"
+	metric_type "$metric_name_objects" "gauge"
+    fi
+
+    if echo "$ZFS_USERSPACE_TYPES" | grep -q project; then
+	metric_name_bytes="${METRIC_NAME_PREFIX}_zfs_projectspace_bytes"
+	metric_help "$metric_name_bytes" "ZFS projectspace usage in bytes"
+	metric_type "$metric_name_bytes" "gauge"
+
+	metric_name_objects="${METRIC_NAME_PREFIX}_zfs_projectspace_objects"
+	metric_help "$metric_name_objects" "ZFS projectspace usage in objects"
+	metric_type "$metric_name_objects" "gauge"
+    fi
+
+
     for dataset in $ZFS_USERSPACE_DATASETS; do
 	# Check if dataset exists
 	if ! zfs list -H -o name "$dataset" >/dev/null 2>&1; then
@@ -42,37 +73,41 @@ collect_zfs_userspace() {
 
 collect_userspace_type() {
     dataset="$1"
-    type="$2"
+    space_type="$2"
     command="$3"
 
-    metric_name="${METRIC_NAME_PREFIX}_zfs_${type}space_bytes"
-    label_name="$type"
+    label_name="$space_type"
 
-    metric_help "$metric_name" "ZFS ${type}space usage in bytes"
-    metric_type "$metric_name" "gauge"
+    metric_name_bytes="${METRIC_NAME_PREFIX}_zfs_${space_type}space_bytes"
+    metric_name_objects="${METRIC_NAME_PREFIX}_zfs_${space_type}space_objects"
 
     # Run the command and filter by threshold
-    $command -Hp -o used,name "$dataset" | \
+    $command -Hpo used,name,objused "$dataset" | \
     awk -v dataset="$dataset" \
 	-v label="$label_name" \
 	-v min_bytes="$ZFS_USERSPACE_MIN_BYTES" \
 	-v max_entries="$ZFS_USERSPACE_MAX_ENTRIES" \
-	-v metric="$metric_name" '
+	-v metricb="$metric_name_bytes" \
+	-v metrico="$metric_name_objects" '
     BEGIN { total = 0 }
     {
-	bytes = $1
+	used = $1
 	name = $2
-	total += bytes
+	objused = $3
+
+	totalb += used
+	totalo += objused
 
 	# Escape quotes in name
 	gsub(/"/, "\\\"", name)
 
-	printf "%s{dataset=\"%s\",%s=\"%s\"} %s\n", metric, dataset, label, name, bytes
-
+	printf "%s{dataset=\"%s\",%s=\"%s\"} %s\n", metricb, dataset, label, name, used
+	printf "%s{dataset=\"%s\",%s=\"%s\"} %s\n", metrico, dataset, label, name, objused
     }
     END {
 	{
-	    printf "%s_total{dataset=\"%s\"} %s\n", metric, dataset, total
+	    printf "%s_total{dataset=\"%s\"} %s\n", metricb, dataset, totalb
+	    printf "%s_total{dataset=\"%s\"} %s\n", metrico, dataset, totalo
 	}
     }'
 }
