@@ -47,16 +47,25 @@ done
 # Shift past the parsed options to get positional arguments
 shift $((OPTIND - 1))
 
-# Check metrics directory exists
+# Check config file exists
 if [ ! -e "$CONFIG_FILE" ]; then
-    echo "# FATAL: Config file $CONFIG_FILE does not exist"
-    exit 0
+    echo "# FATAL: Config file $CONFIG_FILE does not exist" >&2
+    exit 1
 fi
 
 . $CONFIG_FILE
 
-touch "$DEBUG_LOG"
-exec 2>"$DEBUG_LOG"
+# FIX: Robust logging setup
+# 1. Ensure DEBUG_LOG has a value
+: "${DEBUG_LOG:=/var/log/fbsd_exporter-debug.log}"
+
+# 2. Try to create/append to log. If successful, redirect stderr.
+#    Use >> (append) instead of > (overwrite) to preserve history.
+if touch "$DEBUG_LOG" >> "$DEBUG_LOG" 2>&1; then
+    exec 2>>"$DEBUG_LOG"
+else
+    echo "WARNING: Cannot write to $DEBUG_LOG, logging to stderr" >&2
+fi
 
 if [ "${OPT_METRICS_DIR:+x}" = x ] && [ -n "$OPT_METRICS_DIR" ]; then
     METRICS_DIR=$OPT_METRICS_DIR
@@ -172,7 +181,8 @@ main() {
 		iterations=${2:-6}
 		interval=${3:-10}
 
-		for i in $(seq 1 "$iterations"); do
+		i=1
+		while [ "$i" -le "$iterations" ]; do
 		    collect_all_fast > "$TMP" 2>&1
 
 		    if [ -s "$TMP" ]; then
@@ -182,7 +192,10 @@ main() {
 			log_error "Fast collection produced no output"
 		    fi
 
-		    [ "$i" -lt "$iterations" ] && sleep "$interval"
+		    if [ "$i" -lt "$iterations" ]; then
+			sleep "$interval"
+		    fi
+		    i=$((i + 1))
 		done
 	    elif [ "$1" = "--daemon" ]; then
 		# Daemon mode - continuous loop

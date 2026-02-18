@@ -63,20 +63,6 @@ escape_label() {
     printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
-# ?? # # Convert bytes with suffix to plain bytes
-# ?? # parse_bytes() {
-# ?? #     value="$1"
-# ?? #     # Handle K, M, G, T, P suffixes
-# ?? #     case "$value" in
-# ?? #	*K) echo "$value" | sed 's/K$//' | awk '{printf "%.0f", $1 * 1024}' ;;
-# ?? #	*M) echo "$value" | sed 's/M$//' | awk '{printf "%.0f", $1 * 1024 * 1024}' ;;
-# ?? #	*G) echo "$value" | sed 's/G$//' | awk '{printf "%.0f", $1 * 1024 * 1024 * 1024}' ;;
-# ?? #	*T) echo "$value" | sed 's/T$//' | awk '{printf "%.0f", $1 * 1024 * 1024 * 1024 * 1024}' ;;
-# ?? #	*P) echo "$value" | sed 's/P$//' | awk '{printf "%.0f", $1 * 1024 * 1024 * 1024 * 1024 * 1024}' ;;
-# ?? #	*) echo "$value" ;;
-# ?? #     esac
-# ?? # }
-
 # Check if command exists
 has_command() {
     command -v "$1" >/dev/null 2>&1
@@ -109,6 +95,14 @@ log_error() {
 log_warn() {
     # echo "WARNING: $*" >&2
     logger -p user.warning -t "${METRIC_NAME_PREFIX}_exporter" "$*"
+}
+
+# SAFE SYSCTL WRAPPER
+# Runs sysctl and ensures that if it fails (returns non-zero),
+# the script does NOT exit (due to set -e).
+# Errors still go to stderr (debug log).
+_sysctl() {
+    sysctl "$@" || return 0
 }
 
 # Collector status tracking

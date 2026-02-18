@@ -21,21 +21,41 @@ collect_memory() {
     metric_help "${METRIC_NAME_PREFIX}_memory_bytes" "Memory in bytes by type"
     metric_type "${METRIC_NAME_PREFIX}_memory_bytes" "gauge"
 
-    # Get various page counts
-    for stat in v_free_count v_active_count v_inactive_count v_wire_count v_cache_count; do
-	count=$(sysctl -n vm.stats.vm.$stat || echo 0)
-	type=$(echo "$stat" | sed 's/v_//; s/_count//')
-	bytes=$((count * pagesize))
-	metric "${METRIC_NAME_PREFIX}_memory_pages" "type=\"${type}\"" "$count"
-	metric "${METRIC_NAME_PREFIX}_memory_bytes" "type=\"${type}\"" "$bytes"
-    done
-
     # Page faults
     metric_help "${METRIC_NAME_PREFIX}_memory_page_faults_total" "Page faults"
     metric_type "${METRIC_NAME_PREFIX}_memory_page_faults_total" "counter"
 
-    vm_faults=$(sysctl -n vm.stats.vm.v_vm_faults || echo 0)
-    metric "${METRIC_NAME_PREFIX}_memory_page_faults_total" "type=\"total\"" "$vm_faults"
+    # OPTIMIZATION: Single sysctl call for all vm stats
+    sysctl vm.stats.vm | _awk -v pagesize="$pagesize" '
+    BEGIN {
+	# Map sysctl names to metric types
+	map["v_free_count"] = "free"
+	map["v_active_count"] = "active"
+	map["v_inactive_count"] = "inactive"
+	map["v_wire_count"] = "wire"
+	map["v_cache_count"] = "cache"
+    }
+
+    # Match lines like vm.stats.vm.v_free_count: 12345
+    /^vm\.stats\.vm\.v_[a-z]+_count:/ {
+	split($1, parts, ".")
+	stat_name = parts[4]
+	sub(/:$/, "", stat_name) # remove trailing colon
+
+	if (stat_name in map) {
+	    count = $2
+	    type = map[stat_name]
+	    bytes = count * pagesize
+
+	    printf "%s_memory_pages{type=\"%s\"} %s\n", pfx, type, count
+	    printf "%s_memory_bytes{type=\"%s\"} %s\n", pfx, type, bytes
+	}
+    }
+
+    /^vm\.stats\.vm\.v_vm_faults:/ {
+	printf "%s_memory_page_faults_total{type=\"total\"} %s\n", pfx, $2
+    }
+    '
 
     # Swap information
     metric_help "${METRIC_NAME_PREFIX}_swap_size_bytes" "Total swap space"

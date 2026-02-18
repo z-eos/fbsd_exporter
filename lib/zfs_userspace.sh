@@ -81,19 +81,30 @@ collect_userspace_type() {
     metric_name_bytes="${METRIC_NAME_PREFIX}_zfs_${space_type}space_bytes"
     metric_name_objects="${METRIC_NAME_PREFIX}_zfs_${space_type}space_objects"
 
-    # Run the command and filter by threshold
+    # Run the command
     $command -Hpo used,name,objused "$dataset" | \
     awk -v dataset="$dataset" \
 	-v label="$label_name" \
-	-v min_bytes="$ZFS_USERSPACE_MIN_BYTES" \
-	-v max_entries="$ZFS_USERSPACE_MAX_ENTRIES" \
 	-v metricb="$metric_name_bytes" \
 	-v metrico="$metric_name_objects" '
-    BEGIN { total = 0 }
+    BEGIN {
+	FS = "\t"
+	totalb = 0
+	totalo = 0
+    }
+
+    # Skip header
+    $1 == "USED" { next }
+
     {
+	# Capture values, defaulting to 0/unknown if missing
 	used = $1
 	name = $2
 	objused = $3
+
+	if (name == "") name = "unknown"
+	if (used == "") used = 0
+	if (objused == "") objused = 0
 
 	totalb += used
 	totalo += objused
@@ -105,9 +116,8 @@ collect_userspace_type() {
 	printf "%s{dataset=\"%s\",%s=\"%s\"} %s\n", metrico, dataset, label, name, objused
     }
     END {
-	{
-	    printf "%s_total{dataset=\"%s\"} %s\n", metricb, dataset, totalb
-	    printf "%s_total{dataset=\"%s\"} %s\n", metrico, dataset, totalo
-	}
+	# Renamed _total suffix to _sum for Gauges
+	printf "%s_sum{dataset=\"%s\"} %s\n", metricb, dataset, totalb
+	printf "%s_sum{dataset=\"%s\"} %s\n", metrico, dataset, totalo
     }'
 }

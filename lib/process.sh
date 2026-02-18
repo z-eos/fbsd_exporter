@@ -94,8 +94,9 @@ collect_process() {
 	if (aggregate == "1") {
 	    for (name in proc_count) {
 		printf "%s_process_count{name=\"%s\"} %d\n", pfx, name, proc_count[name]
-		printf "%s_process_total_cpu_percent{name=\"%s\"} %.2f\n", pfx, name, proc_cpu[name]
-		printf "%s_process_total_memory_bytes{name=\"%s\"} %.0f\n", pfx, name, proc_mem[name]
+		# Changed _total_ to _group_ (Gauges)
+		printf "%s_process_group_cpu_percent{name=\"%s\"} %.2f\n", pfx, name, proc_cpu[name]
+		printf "%s_process_group_memory_bytes{name=\"%s\"} %.0f\n", pfx, name, proc_mem[name]
 	    }
 	}
 
@@ -104,8 +105,8 @@ collect_process() {
 	    if (!found_procs[name]) {
 		printf "%s_process_count{name=\"%s\"} 0\n", pfx, name
 		if (aggregate == "1") {
-		    printf "%s_process_total_cpu_percent{name=\"%s\"} 0\n", pfx, name
-		    printf "%s_process_total_memory_bytes{name=\"%s\"} 0\n", pfx, name
+		    printf "%s_process_group_cpu_percent{name=\"%s\"} 0\n", pfx, name
+		    printf "%s_process_group_memory_bytes{name=\"%s\"} 0\n", pfx, name
 		}
 	    }
 	}

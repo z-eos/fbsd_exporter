@@ -163,7 +163,7 @@ done
 # System uptime
 metric_help "${METRIC_NAME_PREFIX}_system_uptime_seconds" "System uptime in seconds"
 metric_type "${METRIC_NAME_PREFIX}_system_uptime_seconds" "gauge"
-uptime_seconds=$(sysctl -n kern.boottime | awk '{print $4}' | tr -d ',')
+uptime_seconds=$(_sysctl -n kern.boottime | awk '{print $4}' | tr -d ',')
 if [ -n "$uptime_seconds" ]; then
     current=$(now)
     uptime=$((current - uptime_seconds))
