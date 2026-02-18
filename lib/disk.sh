@@ -32,7 +32,7 @@ collect_zpool_iostat() {
     metric_type "${METRIC_NAME_PREFIX}_zpool_iostat_bytes_total" "counter"
 
     # Get pool-level stats
-    # _zpool returns 0 even on fail, awk handles empty input
+    # _zpool redirects errors to log. If it fails, awk gets empty input.
     _zpool iostat -Hp | _awk 'NR > 1 && NF >= 7 {
 	pool = $1
 	alloc = $2

@@ -98,20 +98,20 @@ log_warn() {
 }
 
 # SAFE COMMAND WRAPPERS
-# Run commands and ensure that if they fail (return non-zero),
-# the script does NOT exit (due to set -e).
-# Stdout is preserved, Stderr goes to log (via exec 2>> in collect.sh).
+# Run commands and ensure that if they fail (return non-zero):
+# 1. The script does NOT exit (due to set -e) by forcing return 0
+# 2. The error message is redirected to DEBUG_LOG (not metric stream)
 
 _sysctl() {
-    sysctl "$@" || return 0
+    sysctl "$@" 2>>"${DEBUG_LOG:-/dev/null}" || return 0
 }
 
 _zpool() {
-    zpool "$@" || return 0
+    zpool "$@" 2>>"${DEBUG_LOG:-/dev/null}" || return 0
 }
 
 _zfs() {
-    zfs "$@" || return 0
+    zfs "$@" 2>>"${DEBUG_LOG:-/dev/null}" || return 0
 }
 
 # Collector status tracking
