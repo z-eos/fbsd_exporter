@@ -56,17 +56,18 @@ collect_zfs_userspace() {
 
 	# Collect userspace
 	if echo "$ZFS_USERSPACE_TYPES" | grep -q user; then
-	    collect_userspace_type "$dataset" "user" "zfs userspace"
+	    # Use _zfs wrapper for subcommand
+	    collect_userspace_type "$dataset" "user" "_zfs userspace"
 	fi
 
 	# Collect groupspace
 	if echo "$ZFS_USERSPACE_TYPES" | grep -q group; then
-	    collect_userspace_type "$dataset" "group" "zfs groupspace"
+	    collect_userspace_type "$dataset" "group" "_zfs groupspace"
 	fi
 
 	# Collect projectspace
 	if echo "$ZFS_USERSPACE_TYPES" | grep -q project; then
-	    collect_userspace_type "$dataset" "project" "zfs projectspace"
+	    collect_userspace_type "$dataset" "project" "_zfs projectspace"
 	fi
     done
 }

@@ -34,12 +34,22 @@ collect_zfs_arc() {
     metric_help "${METRIC_NAME_PREFIX}_zfs_arc_misses_total" "ARC misses"
     metric_type "${METRIC_NAME_PREFIX}_zfs_arc_misses_total" "counter"
 
-    # Read ARC stats from sysctl
-    arc_size=$(_sysctl -n kstat.zfs.misc.arcstats.size || echo 0)
-    arc_target=$(_sysctl -n kstat.zfs.misc.arcstats.c || echo 0)
-    arc_max=$(_sysctl -n kstat.zfs.misc.arcstats.c_max || echo 0)
-    arc_hits=$(_sysctl -n kstat.zfs.misc.arcstats.hits || echo 0)
-    arc_misses=$(_sysctl -n kstat.zfs.misc.arcstats.misses || echo 0)
+    # Read ARC stats from sysctl safely
+    # Note: _sysctl returns 0 on fail, so we use shell defaults
+    arc_size=$(_sysctl -n kstat.zfs.misc.arcstats.size)
+    arc_size=${arc_size:-0}
+
+    arc_target=$(_sysctl -n kstat.zfs.misc.arcstats.c)
+    arc_target=${arc_target:-0}
+
+    arc_max=$(_sysctl -n kstat.zfs.misc.arcstats.c_max)
+    arc_max=${arc_max:-0}
+
+    arc_hits=$(_sysctl -n kstat.zfs.misc.arcstats.hits)
+    arc_hits=${arc_hits:-0}
+
+    arc_misses=$(_sysctl -n kstat.zfs.misc.arcstats.misses)
+    arc_misses=${arc_misses:-0}
 
     metric "${METRIC_NAME_PREFIX}_zfs_arc_size_bytes" "" "$arc_size"
     metric "${METRIC_NAME_PREFIX}_zfs_arc_target_bytes" "" "$arc_target"
@@ -59,7 +69,9 @@ collect_zfs_arc() {
     fi
 
     # L2ARC stats if available
-    l2arc_hits=$(_sysctl -n kstat.zfs.misc.arcstats.l2_hits || echo 0)
+    l2arc_hits=$(_sysctl -n kstat.zfs.misc.arcstats.l2_hits)
+    l2arc_hits=${l2arc_hits:-0}
+
     if [ "$l2arc_hits" != "0" ]; then
 	metric_help "${METRIC_NAME_PREFIX}_zfs_l2arc_hits_total" "L2ARC hits"
 	metric_type "${METRIC_NAME_PREFIX}_zfs_l2arc_hits_total" "counter"
@@ -70,8 +82,11 @@ collect_zfs_arc() {
 	metric_help "${METRIC_NAME_PREFIX}_zfs_l2arc_size_bytes" "L2ARC size in bytes"
 	metric_type "${METRIC_NAME_PREFIX}_zfs_l2arc_size_bytes" "gauge"
 
-	l2arc_misses=$(_sysctl -n kstat.zfs.misc.arcstats.l2_misses || echo 0)
-	l2arc_size=$(_sysctl -n kstat.zfs.misc.arcstats.l2_size || echo 0)
+	l2arc_misses=$(_sysctl -n kstat.zfs.misc.arcstats.l2_misses)
+	l2arc_misses=${l2arc_misses:-0}
+
+	l2arc_size=$(_sysctl -n kstat.zfs.misc.arcstats.l2_size)
+	l2arc_size=${l2arc_size:-0}
 
 	metric "${METRIC_NAME_PREFIX}_zfs_l2arc_hits_total" "" "$l2arc_hits"
 	metric "${METRIC_NAME_PREFIX}_zfs_l2arc_misses_total" "" "$l2arc_misses"

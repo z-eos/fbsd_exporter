@@ -97,12 +97,21 @@ log_warn() {
     logger -p user.warning -t "${METRIC_NAME_PREFIX}_exporter" "$*"
 }
 
-# SAFE SYSCTL WRAPPER
-# Runs sysctl and ensures that if it fails (returns non-zero),
+# SAFE COMMAND WRAPPERS
+# Run commands and ensure that if they fail (return non-zero),
 # the script does NOT exit (due to set -e).
-# Errors still go to stderr (debug log).
+# Stdout is preserved, Stderr goes to log (via exec 2>> in collect.sh).
+
 _sysctl() {
     sysctl "$@" || return 0
+}
+
+_zpool() {
+    zpool "$@" || return 0
+}
+
+_zfs() {
+    zfs "$@" || return 0
 }
 
 # Collector status tracking

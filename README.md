@@ -98,7 +98,7 @@ create file in /usr/local/etc/cron.d with something like this
 
 ### 2. Configure inetd
 
-Add to `/etc/inetd.conf`:
+Add to `/etc/inetd.conf` something like (choose port you like):
 
 ```
 9101 stream tcp nowait nobody /usr/local/libexec/fbsd_exporter_server.sh fbsd_exporter_server.sh

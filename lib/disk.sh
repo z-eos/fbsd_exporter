@@ -32,7 +32,8 @@ collect_zpool_iostat() {
     metric_type "${METRIC_NAME_PREFIX}_zpool_iostat_bytes_total" "counter"
 
     # Get pool-level stats
-    zpool iostat -Hp | _awk 'NR > 1 && NF >= 7 {
+    # _zpool returns 0 even on fail, awk handles empty input
+    _zpool iostat -Hp | _awk 'NR > 1 && NF >= 7 {
 	pool = $1
 	alloc = $2
 	free = $3
@@ -57,8 +58,8 @@ collect_zpool_iostat() {
 	metric_help "${METRIC_NAME_PREFIX}_zpool_iostat_vdev_bytes_total" "Total I/O bytes per vdev"
 	metric_type "${METRIC_NAME_PREFIX}_zpool_iostat_vdev_bytes_total" "counter"
 
-	zpool list -H -o name | while read pool; do
-	    zpool iostat -Hpv "$pool" | _awk -v pool="$pool" 'NR > 1 && $1 != pool && NF >= 7 {
+	_zpool list -H -o name | while read pool; do
+	    _zpool iostat -Hpv "$pool" | _awk -v pool="$pool" 'NR > 1 && $1 != pool && NF >= 7 {
 		vdev = $1
 		gsub(/^  */, "", vdev)  # Remove leading spaces
 		read_ops = $4
@@ -87,11 +88,6 @@ collect_gstat() {
 
     # Run gstat for the configured interval
     interval=${DISK_GSTAT_INTERVAL:-1s}
-
-    # gstat output format:
-    # dT: 1.033s  w: 1.000s
-    #  L(q)  ops/s    r/s   kBps   ms/r    w/s   kBps   ms/w    d/s   kBps   ms/d   %busy Name
-    #     0      0      0      0    0.0      0      0    0.0      0      0    0.0    0.0  da0
 
     gstat -bdp -I "${interval}" | _awk -v interval="$interval" '
     # Skip header lines
@@ -144,9 +140,6 @@ collect_iostat() {
 
     metric_help "${METRIC_NAME_PREFIX}_disk_iostat_busy_percent" "Disk busy percentage"
     metric_type "${METRIC_NAME_PREFIX}_disk_iostat_busy_percent" "gauge"
-
-    # iostat output (extended format):
-    # device     r/s   w/s    kr/s    kw/s qlen  svc_t  %b
 
     iostat -x -w 1 -c 2 | _awk '
     # Skip until we see the second iteration (to get rates, not totals)

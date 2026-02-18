@@ -6,9 +6,12 @@
 collect_cpu() {
     [ "$ENABLE_CPU" != "1" ] && return 0
 
-    # _sysctl prevents crash if OID missing
-    ncpu=$(_sysctl -n hw.ncpu || echo 1)
-    hz=$(_sysctl -n kern.clockrate | sed -n 's/.*[,{][[:space:]]*hz[[:space:]]*=[[:space:]]*\([0-9][0-9]*\).*/\1/p' || echo 128)
+    # _sysctl returns 0 on fail, so use defaults
+    ncpu=$(_sysctl -n hw.ncpu)
+    ncpu=${ncpu:-1}
+
+    hz=$(_sysctl -n kern.clockrate | sed -n 's/.*[,{][[:space:]]*hz[[:space:]]*=[[:space:]]*\([0-9][0-9]*\).*/\1/p')
+    hz=${hz:-128}
 
     ################
     # per-CPU time #

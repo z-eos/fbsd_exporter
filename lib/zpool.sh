@@ -24,7 +24,8 @@ collect_zpool() {
 	metric_help "${METRIC_NAME_PREFIX}_zpool_health" "The current health of the pool, one of ONLINE, DEGRADED, FAULTED, OFFLINE, REMOVED, UNAVAIL."
 	metric_type "${METRIC_NAME_PREFIX}_zpool_health" "gauge"
 
-	zpool list -Hp -o name,size,alloc,free,frag,dedup,health | tr -d '%' | tr -d 'x' | _awk '
+	# Use _zpool wrapper
+	_zpool list -Hp -o name,size,alloc,free,frag,dedup,health | tr -d '%' | tr -d 'x' | _awk '
 	BEGIN {
 	      split("STUB ONLINE DEGRADED FAULTED OFFLINE REMOVED UNAVAIL", states)
 	}

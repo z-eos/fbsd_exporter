@@ -22,8 +22,8 @@ collect_filesystem() {
     # Collect ZFS datasets if available
     if has_zfs; then
 
-	echo ${ZFS_LIST_DEPTH:+"-d $ZFS_LIST_DEPTH"}
-	zfs list -Hp -o name,used,avail,refer,mountpoint ${ZFS_LIST_DEPTH:+-d $ZFS_LIST_DEPTH} | \
+	# Use _zfs wrapper
+	_zfs list -Hp -o name,used,avail,refer,mountpoint ${ZFS_LIST_DEPTH:+-d $ZFS_LIST_DEPTH} | \
 	_awk -v exclude_paths="$exclude_paths_pattern" '
 	$5 != "-" && $5 != "none" && $5 != "legacy" {
 	    dataset = $1
