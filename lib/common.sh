@@ -17,6 +17,24 @@ if [ "${OPT_DEBUG:+x}" ] && [ -n "$OPT_DEBUG" ]; then
     DEBUG=$OPT_DEBUG
 fi
 
+# PERMISSION SAFETY CHECK (SILENT):
+# Ensure we can write to the debug log without triggering shell error messages.
+# If we can't write, fall back to /dev/null.
+: "${DEBUG_LOG:=/dev/null}"
+
+if [ -e "$DEBUG_LOG" ]; then
+    # File exists: check if writable
+    if [ ! -w "$DEBUG_LOG" ]; then
+	DEBUG_LOG="/dev/null"
+    fi
+else
+    # File missing: check if directory is writable
+    LOG_DIR=$(dirname "$DEBUG_LOG" 2>/dev/null || echo "/var/log")
+    if [ ! -w "$LOG_DIR" ]; then
+	DEBUG_LOG="/dev/null"
+    fi
+fi
+
 if [ -f /etc/os-release ]; then
     . /etc/os-release
     VERSION_ID_DOTLESS=$VERSION_ID
@@ -81,7 +99,11 @@ _awk() {
 # Get current timestamp
 now() {
     opt=${1:-s} # or `N' for nanosecunds
-    test "$opt" = "N" && test "$VERSION_ID_DOTLESS" -lt "141" && opt='s'
+    # Rollback: Check version for %N support (FreeBSD 14.1+)
+    # Use default :-0 to prevent syntax error if VERSION_ID_DOTLESS is empty
+    if [ "$opt" = "N" ] && [ "${VERSION_ID_DOTLESS:-0}" -lt "141" ]; then
+	opt='s'
+    fi
     date +%$opt
 }
 
@@ -103,15 +125,15 @@ log_warn() {
 # 2. The error message is redirected to DEBUG_LOG (not metric stream)
 
 _sysctl() {
-    sysctl "$@" 2>>"${DEBUG_LOG:-/dev/null}" || return 0
+    sysctl "$@" 2>>"${DEBUG_LOG}" || return 0
 }
 
 _zpool() {
-    zpool "$@" 2>>"${DEBUG_LOG:-/dev/null}" || return 0
+    zpool "$@" 2>>"${DEBUG_LOG}" || return 0
 }
 
 _zfs() {
-    zfs "$@" 2>>"${DEBUG_LOG:-/dev/null}" || return 0
+    zfs "$@" 2>>"${DEBUG_LOG}" || return 0
 }
 
 # Collector status tracking
@@ -131,14 +153,17 @@ run_collector() {
     collector_name="$1"
     shift
 
-    start_time=$(now N) # nanoseconds
+    start_time=$(now N) # nanoseconds (or seconds on old systems)
     if "$@"; then
 	exit_code=0
     else
 	exit_code=$?
 	log_error "Collector ${collector_name} failed with exit code ${exit_code}"
     fi
-    end_time=$(now N) # nanoseconds
+    end_time=$(now N) # nanoseconds (or seconds on old systems)
+
+    # Calculate duration
+    # Note: If now() fell back to seconds, this will be in seconds.
     duration=$((end_time - start_time))
 
     collector_status "$collector_name" "$exit_code" "$duration" "$end_time"

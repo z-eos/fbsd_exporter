@@ -6,7 +6,7 @@
 
 set -e
 
-VERSION="0.6.3"
+VERSION="0.7.0"
 
 CONFIG_FILE="/usr/local/etc/fbsd_exporter.conf"
 
@@ -43,7 +43,8 @@ if [ "${OPT_DEBUG:+x}" ] && [ -n "$OPT_DEBUG" ]; then
 fi
 
 # Read and discard HTTP request
-while IFS= read -r line; do
+# Use '|| true' to ensure read errors (like client disconnect) don't trigger set -e
+while IFS= read -r line || true; do
     line=$(printf '%s' "$line" | tr -d '\r')
     [ -z "$line" ] && break
 done
@@ -78,7 +79,8 @@ get_age() {
 }
 
 # Helper: safely cat file with error handling
-safe_cat() {
+# Returns 0 on success, 1 on error/missing
+_cat() {
     scope=$1
     case $scope in
 	fast)
@@ -156,13 +158,16 @@ echo "# Metrics collected from multiple files"
 echo ""
 
 for scope in fast slow userspace; do
-    safe_cat $scope
+    # '|| true' ensures that if _cat returns 1 (missing file),
+    # the script continues instead of aborting due to set -e
+    _cat $scope || true
     echo ""
 done
 
 # System uptime
 metric_help "${METRIC_NAME_PREFIX}_system_uptime_seconds" "System uptime in seconds"
 metric_type "${METRIC_NAME_PREFIX}_system_uptime_seconds" "gauge"
+# Use _sysctl wrapper for safety and consistent logging
 uptime_seconds=$(_sysctl -n kern.boottime | awk '{print $4}' | tr -d ',')
 if [ -n "$uptime_seconds" ]; then
     current=$(now)

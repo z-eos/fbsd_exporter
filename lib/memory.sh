@@ -47,8 +47,8 @@ collect_memory() {
 	    type = map[stat_name]
 	    bytes = count * pagesize
 
-	    printf "%s_memory_pages{type=\"%s\"} %s\n", pfx, type, count
-	    printf "%s_memory_bytes{type=\"%s\"} %s\n", pfx, type, bytes
+	    printf "%s_memory_pages{mem_type=\"%s\"} %s\n", pfx, type, count
+	    printf "%s_memory_bytes{mem_type=\"%s\"} %s\n", pfx, type, bytes
 	}
     }
 
