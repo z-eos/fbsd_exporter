@@ -3,45 +3,27 @@
 #
 # Common functions for FreeBSD metrics collectors
 
-# Load configuration
-if [ ! -e "$CONFIG_FILE" ]; then
-    echo "# FATAL: Config file $CONFIG_FILE does not exist"
-    exit 0
-fi
-
-. $CONFIG_FILE
-if [ "${OPT_METRICS_DIR:+x}" = x ] && [ -n "$OPT_METRICS_DIR" ]; then
-    METRICS_DIR=$OPT_METRICS_DIR
-fi
-if [ "${OPT_DEBUG:+x}" ] && [ -n "$OPT_DEBUG" ]; then
-    DEBUG=$OPT_DEBUG
-fi
-
-# PERMISSION SAFETY CHECK (SILENT):
-# Ensure we can write to the debug log without triggering shell error messages.
-# If we can't write, fall back to /dev/null.
+# PERMISSION SAFETY CHECK:
+# Ensure we can write to the debug log. Fallback to /dev/null if not.
+# Uses explicit if-statements to prevent set -e short-circuit aborts.
 : "${DEBUG_LOG:=/dev/null}"
 
 if [ -e "$DEBUG_LOG" ]; then
-    # File exists: check if writable
     if [ ! -w "$DEBUG_LOG" ]; then
 	DEBUG_LOG="/dev/null"
     fi
 else
-    # File missing: check if directory is writable
     LOG_DIR=$(dirname "$DEBUG_LOG" 2>/dev/null || echo "/var/log")
     if [ ! -w "$LOG_DIR" ]; then
 	DEBUG_LOG="/dev/null"
     fi
 fi
 
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    VERSION_ID_DOTLESS=$VERSION_ID
-else
-    VERSION_ID_DOTLESS=$(uname -r | tr -d '.')
-fi
-VERSION_ID_DOTLESS=$(echo ${VERSION_ID_DOTLESS%%-*} | tr -d '.')
+# Detect FreeBSD Version as pure integer (e.g., 1401000 for 14.1)
+# This prevents shell arithmetic/comparison errors (Exit Code 2)
+FREEBSD_VERSION_INT=$(uname -U 2>/dev/null || echo 0)
+FREEBSD_VERSION_INT=$(echo "$FREEBSD_VERSION_INT" | tr -cd '0-9')
+: "${FREEBSD_VERSION_INT:=0}"
 
 # Set hostname
 if [ -z "$HOSTNAME" ]; then
@@ -52,78 +34,59 @@ METRIC_NAME_PREFIX='fbsd'
 
 # Metric output helpers
 metric_help() {
-    name="$1"
-    help_text="$2"
-    echo "# HELP ${name} ${help_text}"
+    echo "# HELP $1 $2"
 }
 
 metric_type() {
-    name="$1"
-    type="$2"  # counter, gauge, histogram, summary
-    echo "# TYPE ${name} ${type}"
+    echo "# TYPE $1 $2"
 }
 
 metric() {
-    name="$1"
-    labels="$2"
-    value="$3"
-
-    if [ -n "$labels" ]; then
-	echo "${name}{${labels}} ${value}"
+    if [ -n "$2" ]; then
+	echo "${1}{${2}} ${3}"
     else
-	echo "${name} ${value}"
+	echo "${1} ${3}"
     fi
 }
 
-# Escape label value for Prometheus format
 escape_label() {
-    # Escape backslashes and quotes
     printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
 }
 
-# Check if command exists
 has_command() {
     command -v "$1" >/dev/null 2>&1
 }
 
-# Check if ZFS is available
 has_zfs() {
-    has_command zfs && has_command zpool && kldstat -q -m zfs
+    if has_command zfs && has_command zpool && kldstat -q -m zfs; then
+	return 0
+    else
+	return 1
+    fi
 }
 
-# AWK alias to promote var `pfx'
 _awk() {
     command awk -v pfx="$METRIC_NAME_PREFIX" "$@"
 }
 
-# Get current timestamp
 now() {
-    opt=${1:-s} # or `N' for nanosecunds
-    # Rollback: Check version for %N support (FreeBSD 14.1+)
-    # Use default :-0 to prevent syntax error if VERSION_ID_DOTLESS is empty
-    if [ "$opt" = "N" ] && [ "${VERSION_ID_DOTLESS:-0}" -lt "141" ]; then
+    opt=${1:-s}
+    # Check version for %N support (FreeBSD 14.1+ is >= 1401000)
+    if [ "$opt" = "N" ] && [ "$FREEBSD_VERSION_INT" -lt 1401000 ]; then
 	opt='s'
     fi
     date +%$opt
 }
 
-# Log error to stderr
 log_error() {
-    # echo "ERROR: $*" >&2
     logger -p user.err -t "${METRIC_NAME_PREFIX}_exporter" "$*"
 }
 
-# Log warning to stderr
 log_warn() {
-    # echo "WARNING: $*" >&2
     logger -p user.warning -t "${METRIC_NAME_PREFIX}_exporter" "$*"
 }
 
-# SAFE COMMAND WRAPPERS
-# Run commands and ensure that if they fail (return non-zero):
-# 1. The script does NOT exit (due to set -e) by forcing return 0
-# 2. The error message is redirected to DEBUG_LOG (not metric stream)
-
+# SAFE WRAPPERS (Redirect stderr to DEBUG_LOG, prevent exit on failure)
 _sysctl() {
     sysctl "$@" 2>>"${DEBUG_LOG}" || return 0
 }
@@ -134,37 +97,4 @@ _zpool() {
 
 _zfs() {
     zfs "$@" 2>>"${DEBUG_LOG}" || return 0
-}
-
-# Collector status tracking
-collector_status() {
-    collector="$1"
-    exit_code="$2"
-    duration="$3"
-    timestamp="$4"
-
-    metric "${METRIC_NAME_PREFIX}_metrics_collector_status" "collector=\"${collector}\"" "$exit_code"
-    metric "${METRIC_NAME_PREFIX}_metrics_collector_duration_nanoseconds" "collector=\"${collector}\"" "$duration"
-    metric "${METRIC_NAME_PREFIX}_metrics_collector_last_run_timestamp" "collector=\"${collector}\"" "$timestamp"
-}
-
-# Run collector with status tracking
-run_collector() {
-    collector_name="$1"
-    shift
-
-    start_time=$(now N) # nanoseconds (or seconds on old systems)
-    if "$@"; then
-	exit_code=0
-    else
-	exit_code=$?
-	log_error "Collector ${collector_name} failed with exit code ${exit_code}"
-    fi
-    end_time=$(now N) # nanoseconds (or seconds on old systems)
-
-    # Calculate duration
-    # Note: If now() fell back to seconds, this will be in seconds.
-    duration=$((end_time - start_time))
-
-    collector_status "$collector_name" "$exit_code" "$duration" "$end_time"
 }
