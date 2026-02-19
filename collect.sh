@@ -42,15 +42,12 @@ while getopts "c:M:s:d" opt; do
 done
 
 # --- CONCURRENCY PROTECTION ---
-# EXTREMELY IMPORTANT: This must run BEFORE the `shift` command below,
-# otherwise the arguments (-s slow) are lost when lockf re-executes the script!
 if [ "${LOCKED_EXECUTION}" != "1" ]; then
     LOCKFILE="/tmp/fbsd_exporter_${SCOPE:-fast}.lock"
     export LOCKED_EXECUTION=1
     exec lockf -t 0 "$LOCKFILE" "$0" "$@" || exit 0
 fi
 
-# Now it is safe to shift the parsed options away
 if [ -n "$OPTIND" ] && [ "$OPTIND" -gt 1 ]; then
     shift $((OPTIND - 1))
 fi
@@ -60,7 +57,6 @@ if [ ! -e "$CONFIG_FILE" ]; then
     exit 1
 fi
 
-# SAFETY: Protect sourcing the config file.
 set +e
 . "$CONFIG_FILE"
 config_ret=$?
@@ -80,7 +76,6 @@ else
     echo "WARNING: Cannot write to $DEBUG_LOG, logging to stderr" >&2
 fi
 
-# Robust DEBUG handling decoupled from the config to prevent Exit 2 crashes
 if [ -n "$OPT_DEBUG" ]; then
     DEBUG_RAW="$OPT_DEBUG"
 elif [ -n "$DEBUG" ]; then
@@ -115,10 +110,8 @@ if [ -z "$SCOPE" ]; then
     LIB_FILES="${LIB_FILES} cpu.sh memory.sh disk.sh filesystem.sh process.sh"
 fi
 
-# Dynamically find script directory regardless of what the config says
 SCRIPT_DIR=$(dirname "$(realpath "$0")")
 
-# SAFETY: Protect sourcing library files.
 for FILE in $LIB_FILES; do
     set +e
     . "${SCRIPT_DIR}/lib/${FILE}"
@@ -162,10 +155,12 @@ run_collector() {
 	echo "# +++> collector start: ${collector_name}"
     fi
 
-    # CRITICAL FIX: Use Epoch seconds (`date +%s`).
-    # This prevents `%N` nanoseconds from triggering shell Octal Parsing crashes
-    # and prevents negative duration wrap-arounds.
-    start_time=$(date +%s)
+    # High-resolution timestamp extraction (Seconds and Nanoseconds)
+    if [ "${FREEBSD_VERSION_INT:-0}" -ge 1401000 ]; then
+	start_time=$(date "+%s %N")
+    else
+	start_time=$(date "+%s 0")
+    fi
 
     if "$@"; then
 	exit_code=0
@@ -174,13 +169,25 @@ run_collector() {
 	log_error "Collector ${collector_name} failed with exit code ${exit_code}"
     fi
 
-    end_time=$(date +%s)
+    if [ "${FREEBSD_VERSION_INT:-0}" -ge 1401000 ]; then
+	end_time=$(date "+%s %N")
+    else
+	end_time=$(date "+%s 0")
+    fi
 
-    # CRITICAL FIX: Use awk for duration math.
-    # Immune to Octal issues, immune to 32-bit integer limits.
-    duration=$(awk -v st="$start_time" -v et="$end_time" 'BEGIN { printf "%.0f\n", (et - st) * 1000000000 }')
+    # Calculate exact duration bypassing shell math limits
+    duration=$(awk -v st="$start_time" -v et="$end_time" 'BEGIN {
+	split(st, s)
+	split(et, e)
+	sec_diff = e[1] - s[1]
+	ns_diff = e[2] - s[2]
+	printf "%.0f\n", (sec_diff * 1000000000) + ns_diff
+    }')
 
-    collector_status "$collector_name" "$exit_code" "$duration" "$end_time"
+    # Grab the pure epoch timestamp for the status metric
+    end_stamp=$(echo "$end_time" | awk '{print $1}')
+
+    collector_status "$collector_name" "$exit_code" "$duration" "$end_stamp"
 
     if [ "$DEBUG" -gt 0 ]; then
 	echo "# ---> collector stop: ${collector_name}"
@@ -232,12 +239,27 @@ collect_all_userspace() {
     return 0
 }
 
+# Cleanup and Error Reporting Function
+cleanup_on_exit() {
+    ret=$?
+    if [ $ret -ne 0 ]; then
+	parent_cmd=$(ps -p "${PPID:-1}" -o command= 2>/dev/null || echo "unknown")
+	echo "FATAL: Script (PPID: ${PPID:-unknown}; ${parent_cmd}) aborted with exit code $ret" >&2
+
+	if [ -f "$TMP" ] && [ -s "$TMP" ]; then
+	    echo "--- CRASH DUMP FROM $TMP ---" >> "$DEBUG_LOG"
+	    cat "$TMP" >> "$DEBUG_LOG"
+	    echo "--- END DUMP ---" >> "$DEBUG_LOG"
+	fi
+    fi
+    rm -f "$TMP"
+}
+
 # Main execution
 main() {
     TMP="${OUTPUT}.$$"
 
-    # ULTIMATE TRAP: If it crashes, DUMP the exact error message from the TMP file into DEBUG_LOG
-    trap 'ret=$?; if [ $ret -ne 0 ]; then echo "FATAL: Script (PPID: ${PPID:-unknown}; $(ps -p ${PPID:-1} -o command= 2>/dev/null || echo unknown)) aborted with exit code $ret" >&2; if [ -f "$TMP" ] && [ -s "$TMP" ]; then echo "--- CRASH DUMP FROM $TMP ---" >> "$DEBUG_LOG"; cat "$TMP" >> "$DEBUG_LOG"; echo "--- END DUMP ---" >> "$DEBUG_LOG"; fi; fi; rm -f "$TMP"' EXIT INT TERM
+    trap cleanup_on_exit EXIT INT TERM
 
     case "$SCOPE" in
 	fast)
