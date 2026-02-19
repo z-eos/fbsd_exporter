@@ -6,7 +6,7 @@
 
 set -e
 
-VERSION="0.7.0"
+VERSION="0.6.3"
 
 CONFIG_FILE="/usr/local/etc/fbsd_exporter.conf"
 
@@ -42,10 +42,10 @@ if [ "${OPT_DEBUG:+x}" ] && [ -n "$OPT_DEBUG" ]; then
     DEBUG=$OPT_DEBUG
 fi
 
-# Read and discard HTTP request
-# Use '|| true' to ensure read errors (like client disconnect) don't trigger set -e
+# Optimized: Use shell parameter expansion to strip \r instead of subshell + printf/tr
+cr="$(printf '\r')"
 while IFS= read -r line || true; do
-    line=$(printf '%s' "$line" | tr -d '\r')
+    line="${line%$cr}"
     [ -z "$line" ] && break
 done
 
@@ -97,7 +97,9 @@ _cat() {
 	    ;;
     esac
     file="${METRICS_DIR}/${METRIC_NAME_PREFIX}_exporter_${scope}.prom"
-    name="$(basename $1)"
+
+    # Optimized: Shell parameter expansion instead of basename
+    name="${file##*/}"
 
     age=$(get_age "$file")
 
@@ -167,8 +169,12 @@ done
 # System uptime
 metric_help "${METRIC_NAME_PREFIX}_system_uptime_seconds" "System uptime in seconds"
 metric_type "${METRIC_NAME_PREFIX}_system_uptime_seconds" "gauge"
-# Use _sysctl wrapper for safety and consistent logging
-uptime_seconds=$(_sysctl -n kern.boottime | awk '{print $4}' | tr -d ',')
+
+# Optimized: Shell parameter expansion instead of spawning awk + tr
+uptime_raw=$(_sysctl -n kern.boottime)
+uptime_seconds="${uptime_raw#*sec = }"
+uptime_seconds="${uptime_seconds%%,*}"
+
 if [ -n "$uptime_seconds" ]; then
     current=$(now)
     uptime=$((current - uptime_seconds))
@@ -192,7 +198,10 @@ if [ -f /etc/os-release ]; then
 		  }' /etc/os-release
 else
     OS_VERSION=$(uname -r)
-    OS_VERSION_ID=$(echo ${OS_VERSION%%-*} | tr -d '.')
+    # POSIX: strip longest suffix starting with dash
+    OS_VERSION_ID="${OS_VERSION%%-*}"
+    # POSIX rollback: tr to remove dots
+    OS_VERSION_ID=$(echo "$OS_VERSION_ID" | tr -d '.')
     metric "${METRIC_NAME_PREFIX}_system_info" "NAME=\"FreeBSD\",VERSION=\"$OS_VERSION\",VERSION_ID=\"${OS_VERSION_ID}\"" "1"
 fi
 

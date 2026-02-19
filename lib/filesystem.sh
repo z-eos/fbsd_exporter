@@ -15,9 +15,8 @@ collect_filesystem() {
     metric_help "${METRIC_NAME_PREFIX}_filesystem_avail_bytes" "Filesystem available space in bytes"
     metric_type "${METRIC_NAME_PREFIX}_filesystem_avail_bytes" "gauge"
 
-    # Build _awk script to filter exclusions
-    exclude_types_pattern=$(echo "$FILESYSTEM_EXCLUDE_TYPES" | sed 's/ /|/g')
-    exclude_paths_pattern=$(echo "$FILESYSTEM_EXCLUDE_PATHS" | sed 's/ /|/g')
+    exclude_types_pattern=$(echo "$FILESYSTEM_EXCLUDE_TYPES" | tr ' ' '|')
+    exclude_paths_pattern=$(echo "$FILESYSTEM_EXCLUDE_PATHS" | tr ' ' '|')
 
     # Collect ZFS datasets if available
     if has_zfs; then

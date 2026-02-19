@@ -10,7 +10,10 @@ collect_cpu() {
     ncpu=$(_sysctl -n hw.ncpu)
     ncpu=${ncpu:-1}
 
-    hz=$(_sysctl -n kern.clockrate | sed -n 's/.*[,{][[:space:]]*hz[[:space:]]*=[[:space:]]*\([0-9][0-9]*\).*/\1/p')
+    # Optimized: Use shell parameter expansion instead of a complex 'sed' regex
+    hz_raw=$(_sysctl -n kern.clockrate)
+    hz="${hz_raw#*hz = }"
+    hz="${hz%%,*}"
     hz=${hz:-128}
 
     ################

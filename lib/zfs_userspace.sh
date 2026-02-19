@@ -16,7 +16,10 @@ collect_zfs_userspace() {
 	return 0
     fi
 
-    if echo "$ZFS_USERSPACE_TYPES" | grep -q user; then
+    # Optimized: Pad spaces around variable and use shell substring removal instead of echo | grep
+    types_padded=" $ZFS_USERSPACE_TYPES "
+
+    if [ "${types_padded#* user }" != "$types_padded" ]; then
 	metric_name_bytes="${METRIC_NAME_PREFIX}_zfs_userspace_bytes"
 	metric_help "$metric_name_bytes" "ZFS userspace usage in bytes"
 	metric_type "$metric_name_bytes" "gauge"
@@ -26,7 +29,7 @@ collect_zfs_userspace() {
 	metric_type "$metric_name_objects" "gauge"
     fi
 
-    if echo "$ZFS_USERSPACE_TYPES" | grep -q group; then
+    if [ "${types_padded#* group }" != "$types_padded" ]; then
 	metric_name_bytes="${METRIC_NAME_PREFIX}_zfs_groupspace_bytes"
 	metric_help "$metric_name_bytes" "ZFS groupspace usage in bytes"
 	metric_type "$metric_name_bytes" "gauge"
@@ -36,7 +39,7 @@ collect_zfs_userspace() {
 	metric_type "$metric_name_objects" "gauge"
     fi
 
-    if echo "$ZFS_USERSPACE_TYPES" | grep -q project; then
+    if [ "${types_padded#* project }" != "$types_padded" ]; then
 	metric_name_bytes="${METRIC_NAME_PREFIX}_zfs_projectspace_bytes"
 	metric_help "$metric_name_bytes" "ZFS projectspace usage in bytes"
 	metric_type "$metric_name_bytes" "gauge"
@@ -55,18 +58,18 @@ collect_zfs_userspace() {
 	fi
 
 	# Collect userspace
-	if echo "$ZFS_USERSPACE_TYPES" | grep -q user; then
+	if [ "${types_padded#* user }" != "$types_padded" ]; then
 	    # Use _zfs wrapper for subcommand
 	    collect_userspace_type "$dataset" "user" "_zfs userspace"
 	fi
 
 	# Collect groupspace
-	if echo "$ZFS_USERSPACE_TYPES" | grep -q group; then
+	if [ "${types_padded#* group }" != "$types_padded" ]; then
 	    collect_userspace_type "$dataset" "group" "_zfs groupspace"
 	fi
 
 	# Collect projectspace
-	if echo "$ZFS_USERSPACE_TYPES" | grep -q project; then
+	if [ "${types_padded#* project }" != "$types_padded" ]; then
 	    collect_userspace_type "$dataset" "project" "_zfs projectspace"
 	fi
     done

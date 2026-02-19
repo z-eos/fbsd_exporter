@@ -22,9 +22,8 @@ collect_process() {
     metric_help "${METRIC_NAME_PREFIX}_process_count" "Number of processes by name"
     metric_type "${METRIC_NAME_PREFIX}_process_count" "gauge"
 
-    # Build pattern for matching
     if [ -n "$PROCESS_NAMES" ]; then
-	names_pattern=$(echo "$PROCESS_NAMES" | sed 's/ /|/g')
+	names_pattern=$(echo "$PROCESS_NAMES" | tr ' ' '|')
 	# Pass expected names to awk
 	expected_names="$PROCESS_NAMES"
     else
@@ -112,7 +111,8 @@ collect_process() {
 	}
     }'
 
-    for process in `echo $PROCESS_NAMES`;do
+    # Optimized: Avoid unnecessary subshell execution of `echo`
+    for process in $PROCESS_NAMES; do
 	case "$process" in
 	    openvpn)
 		if [ -n "$PROCESS_NAME_OPENVPN_CONFIGS" ]; then
