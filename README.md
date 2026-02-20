@@ -70,27 +70,31 @@ To introduce a new metric collector (e.g., for pf firewall stats), follow this p
 1. **Create the Library File:**  
    Create a new file lib/pf.sh.  
 2. **Define the Collector Function:**  
-   Implement a function named collect\_pf(). The function must first verify if it is enabled via a configuration toggle:  
+   Implement a function named collect\_pf(). The function must first verify if it is enabled via a configuration toggle:
+   ```
    collect\_pf() {  
        \[ "$ENABLE\_PF" \!= "1" \] && return 0  
        \# Metric collection logic goes here  
    }
+   ```
 
-3. **Format and Emit Metrics:**  
-   Utilize the helper functions to output data to standard output.  
+4. **Format and Emit Metrics:**  
+   Utilize the helper functions to output data to standard output.
+   ```
    metric\_help "${METRIC\_NAME\_PREFIX}\_pf\_states" "Number of active pf states"  
    metric\_type "${METRIC\_NAME\_PREFIX}\_pf\_states" "gauge"
 
    states=$(pfctl \-si 2\>/dev/null | awk '/current entries/ {print $3}')  
    metric "${METRIC\_NAME\_PREFIX}\_pf\_states" "" "${states:-0}"
+   ```
 
-4. **Register the Module in collect.sh:**  
+5. **Register the Module in collect.sh:**  
    You must register the module in collect.sh by defining when it is sourced and when it is executed.  
    * **Source the library:** Append your script (e.g., pf.sh) to the LIB\_FILES variable. If you are adding it to the default fast scope, you must update LIB\_FILES in **two** places:  
      1. Inside the getopts arguments parser (case "$OPTARG" in fast)).  
      2. Inside the default fallback block (if \[ \-z "$SCOPE" \]; then).  
-   * **Execute the collector:** Append the execution call if \[ "$ENABLE\_PF" \= "1" \]; then run\_collector "pf" collect\_pf; fi inside the corresponding collection function (e.g., collect\_all\_fast()).  
-5. **Update Configuration:**  
+   * **Execute the collector:** Append the execution call `if \[ "$ENABLE\_PF" \= "1" \]; then run\_collector "pf" collect\_pf; fi` inside the corresponding collection function (e.g., collect\_all\_fast()).  
+6. **Update Configuration:**  
    Add the default toggle ENABLE\_PF=1 to fbsd\_exporter.conf.
 
 ## **FILES**
@@ -113,7 +117,8 @@ To introduce a new metric collector (e.g., for pf firewall stats), follow this p
 To execute a manual collection of the lightweight metrics with debugging enabled:  
 /usr/local/libexec/fbsd\_exporter/collect.sh \-s fast \-d
 
-To configure cron(8) to collect metrics at recommended intervals, add the following to /etc/crontab:  
+To configure cron(8) to collect metrics at recommended intervals, add the following to /etc/crontab:
+```
 \# Run fast metrics every minute  
 \* \* \* \* \* root  /usr/local/libexec/fbsd\_exporter/collect.sh \-s fast
 
@@ -122,9 +127,11 @@ To configure cron(8) to collect metrics at recommended intervals, add the follow
 
 \# Run userspace metrics every 15 minutes  
 \*/15 \* \* \* \* root  /usr/local/libexec/fbsd\_exporter/collect.sh \-s userspace
+```
 
-To configure inetd(8) to serve the metrics on port 9100, add the following to /etc/inetd.conf:  
-9100 stream tcp nowait nobody /usr/local/libexec/fbsd\_exporter/fbsd\_exporter\_server.sh fbsd\_exporter\_server.sh
+To configure inetd(8) to serve the metrics on port 9100, add the following to /etc/inetd.conf:
+
+`9100 stream tcp nowait nobody /usr/local/libexec/fbsd\_exporter/fbsd\_exporter\_server.sh fbsd\_exporter\_server.sh`
 
 ## **SEE ALSO**
 
