@@ -1,182 +1,135 @@
-# FreeBSD Openmetrics Generator And Collector
+# **fbsd\_exporter(8) \- FreeBSD System Manager's Manual**
 
-A lightweight, modular openmetrics exporter for FreeBSD systems, designed to provide comprehensive system monitoring with minimal overhead.
+## **NAME**
 
-The main idea is to use tools natively available in OS.
+**fbsd\_exporter** \- Native shell-based Prometheus metrics exporter for FreeBSD
 
-## Features
+## **SYNOPSIS**
 
-- **Modular Architecture**: Enable/disable metric groups as needed
-- **Multi-tier Collection**: Fast (10s), slow (5m), and userspace (15m) collectors
-- **ZFS-First Design**: Deep ZFS integration with pool, dataset, and userspace metrics
-- **inetd Integration**: Serves metrics via HTTP without persistent daemon
-- **Atomic Updates**: Lock-free file operations prevent partial data
-- **Low Overhead**: POSIX-shell-based collectors with minimal resource usage
+collect.sh \[-d\] \[-c config\_file\] \[-M metrics\_dir\] \[-s scope\]
 
-## Metrics Collected
+fbsd\_exporter\_server.sh
 
-### Core Metrics (Always Enabled)
-- **CPU**: Per-CPU time, load averages, context switches, interrupts
-- **Memory**: Physical memory breakdown, page statistics, swap usage
-- **System**: Uptime, kernel version, architecture
+## **DESCRIPTION**
 
-### Optional Modules
+The **fbsd\_exporter** suite provides a native, dependency-free mechanism for extracting system metrics from a FreeBSD host and exposing them in the Prometheus text-based exposition format. Unlike traditional exporters written in Go, **fbsd\_exporter** relies exclusively on the POSIX shell (/bin/sh) and standard FreeBSD base utilities (sysctl, zfs, zpool, awk).  
+The system is architecturally split into two distinct phases to ensure system stability and prevent blocking:
 
-#### Disk I/O
-- **ZFS Pools**: Operations, bandwidth, allocation per pool and vdev
-- **GEOM Devices**: I/O statistics via gstat
+1. **Collection:** The collect.sh script is invoked periodically (typically via cron(8)) to gather metrics and atomically write them to a spool directory.  
+2. **Exposition:** The fbsd\_exporter\_server.sh script serves the pre-calculated metrics over HTTP. It is designed to be invoked by inetd(8) or a similar super-server.
 
-#### Filesystem
-- **ZFS Datasets**: Usage, available space, compression ratio
-- **UFS/Others**: Standard filesystem metrics
+Metrics are grouped into "scopes", allowing expensive operations (like querying ZFS user/group quotas) to be executed less frequently than lightweight operations (like reading CPU state).
 
-#### ZFS Core
-- **ARC**: Size, hit rate, L2ARC statistics
-- **Pool Health**: Status, errors, scrub information
-- **Fragmentation**: Per-pool fragmentation ratio
+## **OPTIONS**
 
-#### ZFS Userspace
-- **User/Group/Project**: Space usage per entity per dataset
-- **Configurable Thresholds**: Limit cardinality with minimum size filters
+The following options are available for the collect.sh utility:
 
-#### Process Monitoring
-- **Per-Process**: CPU, memory, state for configured processes
-- **Aggregated**: Total resources by process name
+* **\-c** *config\_file*  
+  Specify an alternate configuration file. If not specified, the default is /usr/local/etc/fbsd\_exporter.conf.  
+* **\-d**  
+  Enable debug logging. Execution traces, environments, and verbose module outputs will be appended to the debug log (see *FILES*).  
+* **\-M** *metrics\_dir*  
+  Specify the spool directory where output .prom files are written. Overrides the METRICS\_DIR variable in the configuration file. Default is /var/spool/fbsd\_exporter.  
+* **\-s** *scope*  
+  Define the scope of metrics to collect during this execution. The *scope* argument dictates which library files are sourced. Valid scopes are:  
+  * **fast**: Lightweight metrics suitable for sub-minute polling (CPU, memory, disk I/O, filesystem usage, process counts). This is the default if \-s is omitted.  
+  * **slow**: Heavier metrics that may require disk access or subsystem locks (Zpool health, ZFS core statistics).  
+  * **userspace**: Highly intensive metrics requiring deep dataset traversal (ZFS userspace, groupspace, and projectspace quotas).
 
-## Architecture
+## **CONFIGURATION**
 
-```
-┌─────────────────┐
-│   Prometheus    │
-└────────┬────────┘
-		 │ scrape :9101/metrics
-		 ▼
-┌─────────────────┐
-│  inetd :9101    │
-└────────┬────────┘
-		 │ spawn
-		 ▼
-┌─────────────────────────────────┐
-│ fbsd_exporter_server.sh         │
-│  reads and merges:              │
-│  - fbsd_exporter_fast.prom      │
-│  - fbsd_exporter_slow.prom      │
-│  - fbsd_exporter_userspace.prom │
-└─────────────────────────────────┘
-		 ▲
-		 │ atomic writes
-	┌────┴────┬─────────┐
-	│         │         │
-┌───┴────┐ ┌──┴─────┐ ┌─┴─────────┐
-│ Fast   │ │ Slow   │ │ Userspace │
-│ (10s)  │ │ (5m)   │ │ (15m)     │
-└────────┘ └────────┘ └───────────┘
-   cron       cron        cron
-```
+The configuration file (fbsd\_exporter.conf) is sourced directly by the shell and must conform to POSIX shell syntax. It defines which modules are enabled and configures module-specific parameters.  
+Key configuration variables include:
 
-## Configuration
+* ENABLE\_CPU, ENABLE\_MEMORY, ENABLE\_ZFS\_CORE, etc.: Set to 1 to enable the respective collector, or 0 to disable.  
+* MAX\_AGE\_FAST, MAX\_AGE\_SLOW, MAX\_AGE\_USERSPACE: Defines the maximum age (in seconds) of a spool file before the HTTP server considers it stale and drops the metrics.  
+* ZFS\_USERSPACE\_DATASETS: A space-separated list of ZFS datasets to query when the **userspace** scope is executed (e.g., "zroot/ROOT tank/home").  
+* PROCESS\_NAMES: A space-separated list of process names to monitor for CPU/memory consumption.
 
-Edit `/usr/local/etc/fbsd_exporter.conf`:
+## **IMPLEMENTATION NOTES**
 
-## Setup
+* collect.sh utilizes lockf(1) to prevent concurrent executions of the same scope. If a cron job fires while a previous execution of the same scope is still running, the new process will exit immediately with status 0\.  
+* To ensure atomic metric updates, collect.sh writes all metrics to a temporary file (\*.prom.PID) within the *metrics\_dir*. Upon successful completion, the temporary file is moved to the final destination file using mv(1).  
+* Arithmetic and float conversions are strictly delegated to awk(1) to bypass the 32-bit integer limits and octal-parsing quirks inherent to standard /bin/sh.
 
-### 1. Configure Cron
+## **MODULE ARCHITECTURE**
 
-create file in /usr/local/etc/cron.d with something like this
+The metric collection logic is highly modular. Each collector resides in a standalone POSIX shell script within the lib/ directory. Modules are dynamically sourced by collect.sh based on the requested *scope*.  
+To standardize output and ensure execution safety, modules rely on helper functions defined in lib/common.sh:
 
-```bash
-#
-# minute hour mday month wday who command
-#
+* metric\_help "metric\_name" "Description": Generates the \# HELP metadata line.  
+* metric\_type "metric\_name" "gauge|counter": Generates the \# TYPE metadata line.  
+* metric "metric\_name" "labels" "value": Emits the actual metric. If labels are provided (e.g., device="ada0"), they are automatically enclosed in braces.  
+* \_awk: A wrapper for awk(1) that automatically injects the \-v pfx="$METRIC\_NAME\_PREFIX" variable, allowing awk scripts to seamlessly prefix metric names (using %s\_metric\_name, pfx).  
+* \_sysctl, \_zfs, \_zpool: Safe execution wrappers that redirect standard error to the debug log and prevent the strict set \-e shell environment from aborting the entire collection run if a system binary fails or returns a non-zero exit code.
 
-*/1  * * * * root /usr/local/libexec/fbsd_exporter/collect.sh
-*/5  * * * * root /usr/local/libexec/fbsd_exporter/collect.sh -s slow
-*/15 * * * * root /usr/local/libexec/fbsd_exporter/collect.sh -s userspace
+## **CREATING NEW MODULES**
 
-#
-```
+To introduce a new metric collector (e.g., for pf firewall stats), follow this procedure:
 
-### 2. Configure inetd
+1. **Create the Library File:**  
+   Create a new file lib/pf.sh.  
+2. **Define the Collector Function:**  
+   Implement a function named collect\_pf(). The function must first verify if it is enabled via a configuration toggle:  
+   collect\_pf() {  
+       \[ "$ENABLE\_PF" \!= "1" \] && return 0  
+       \# Metric collection logic goes here  
+   }
 
-Add to `/etc/inetd.conf` something like (choose port you like):
+3. **Format and Emit Metrics:**  
+   Utilize the helper functions to output data to standard output.  
+   metric\_help "${METRIC\_NAME\_PREFIX}\_pf\_states" "Number of active pf states"  
+   metric\_type "${METRIC\_NAME\_PREFIX}\_pf\_states" "gauge"
 
-```
-9101 stream tcp nowait nobody /usr/local/libexec/fbsd_exporter_server.sh fbsd_exporter_server.sh
-```
+   states=$(pfctl \-si 2\>/dev/null | awk '/current entries/ {print $3}')  
+   metric "${METRIC\_NAME\_PREFIX}\_pf\_states" "" "${states:-0}"
 
-Enable inetd in `/etc/rc.conf`:
+4. **Register the Module in collect.sh:**  
+   You must register the module in collect.sh by defining when it is sourced and when it is executed.  
+   * **Source the library:** Append your script (e.g., pf.sh) to the LIB\_FILES variable. If you are adding it to the default fast scope, you must update LIB\_FILES in **two** places:  
+     1. Inside the getopts arguments parser (case "$OPTARG" in fast)).  
+     2. Inside the default fallback block (if \[ \-z "$SCOPE" \]; then).  
+   * **Execute the collector:** Append the execution call if \[ "$ENABLE\_PF" \= "1" \]; then run\_collector "pf" collect\_pf; fi inside the corresponding collection function (e.g., collect\_all\_fast()).  
+5. **Update Configuration:**  
+   Add the default toggle ENABLE\_PF=1 to fbsd\_exporter.conf.
 
-```bash
-inetd_enable="YES"
-inetd_flags="-wW -C 60"  # Rate limiting
-```
+## **FILES**
 
-Restart inetd:
+* /usr/local/libexec/fbsd\_exporter/collect.sh  
+  The primary metric collection executable.  
+* /usr/local/libexec/fbsd\_exporter/fbsd\_exporter\_server.sh  
+  The HTTP exposition server (for use with inetd).  
+* /usr/local/libexec/fbsd\_exporter/lib/\*  
+  Modular metric collection libraries sourced by collect.sh.  
+* /usr/local/etc/fbsd\_exporter.conf  
+  The master configuration file.  
+* /var/spool/fbsd\_exporter/\*  
+  The default spool directory containing the materialized Prometheus metrics (\*.prom files).  
+* /var/log/fbsd\_exporter-debug.log  
+  The default output file for crash dumps and debug traces when \-d is utilized.
 
-```bash
-service inetd restart
-```
+## **EXAMPLES**
 
-### 3. Firewall Configuration (Optional)
+To execute a manual collection of the lightweight metrics with debugging enabled:  
+/usr/local/libexec/fbsd\_exporter/collect.sh \-s fast \-d
 
-For PF, add to `/etc/pf.conf`:
+To configure cron(8) to collect metrics at recommended intervals, add the following to /etc/crontab:  
+\# Run fast metrics every minute  
+\* \* \* \* \* root  /usr/local/libexec/fbsd\_exporter/collect.sh \-s fast
 
-```
-prometheus_server = "192.168.1.10"
-pass in proto tcp from $prometheus_server to any port 9101
-```
+\# Run slow metrics every 5 minutes  
+\*/5 \* \* \* \* root  /usr/local/libexec/fbsd\_exporter/collect.sh \-s slow
 
-### 4. Verify Installation
+\# Run userspace metrics every 15 minutes  
+\*/15 \* \* \* \* root  /usr/local/libexec/fbsd\_exporter/collect.sh \-s userspace
 
-```bash
-# Test locally
-curl http://localhost:9101/metrics
+To configure inetd(8) to serve the metrics on port 9100, add the following to /etc/inetd.conf:  
+9100 stream tcp nowait nobody /usr/local/libexec/fbsd\_exporter/fbsd\_exporter\_server.sh fbsd\_exporter\_server.sh
 
-# Check if metrics are being collected
-ls -lh /var/spool/fbsd_exporter/
+## **SEE ALSO**
 
-# Check cron logs
-grep fbsd_exporter /var/log/cron
-```
+awk(1), cron(8), inetd(8), lockf(1), sysctl(8), zfs(8), zpool(8)
 
-## Prometheus Configuration
+## **HISTORY**
 
-Add to `prometheus.yml`:
-
-```yaml
-scrape_configs:
-  - job_name: 'fbsd'
-	static_configs:
-	  - targets:
-		  - 'freebsd-host1.example.com:9101'
-		  - 'freebsd-host2.example.com:9101'
-	scrape_interval: 30s
-	scrape_timeout: 10s
-```
-
-## Example Metrics
-
-```
-# CPU time
-freebsd_cpu_time_seconds_total{cpu="0",mode="user"} 12345.67
-freebsd_cpu_time_seconds_total{cpu="0",mode="system"} 2345.67
-
-# Memory
-freebsd_memory_bytes{type="active"} 8589934592
-freebsd_memory_bytes{type="free"} 4294967296
-
-# ZFS Pool
-freebsd_zfs_pool_allocated_bytes{pool="tank"} 5497558138880
-freebsd_zfs_pool_free_bytes{pool="tank"} 4939212029952
-
-# ZFS ARC
-freebsd_zfs_arc_size_bytes 4294967296
-freebsd_zfs_arc_hit_ratio 0.9523
-
-# Filesystem
-freebsd_filesystem_used_bytes{mountpoint="/home",fstype="zfs",dataset="tank/home"} 1234567890
-
-# ZFS Userspace (if enabled)
-freebsd_zfs_userspace_bytes{dataset="tank/mails",user="john.doe"} 5314053350
-freebsd_zfs_groupspace_bytes{dataset="tank/data",group="developers"} 10737418240
-```
+The **fbsd\_exporter** was developed to provide a robust, low-overhead alternative to compiled metric exporters on FreeBSD systems, relying entirely on the native base system utilities.
