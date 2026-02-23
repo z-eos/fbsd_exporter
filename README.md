@@ -123,7 +123,6 @@ To execute a manual collection of the lightweight metrics with debugging enabled
 `/usr/local/libexec/fbsd_exporter/collect.sh -s fast -d`
 
 To configure cron(8) to collect metrics at recommended intervals, add the following to /etc/crontab:
-
 ```
 # Run fast metrics every minute
 * * * * * root  /usr/local/libexec/fbsd_exporter/collect.sh -s fast
@@ -136,7 +135,7 @@ To configure cron(8) to collect metrics at recommended intervals, add the follow
 ```
 
 To configure inetd(8) to serve the metrics on port 9100, add the following to /etc/inetd.conf:
-9100 stream tcp nowait nobody /usr/local/libexec/fbsd\_exporter/fbsd\_exporter\_server.sh fbsd\_exporter\_server.sh
+`9100 stream tcp nowait nobody /usr/local/libexec/fbsd_exporter/fbsd_exporter_server.sh fbsd_exporter_server.sh`
 
 ## **SEE ALSO**
 
