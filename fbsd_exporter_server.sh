@@ -6,7 +6,7 @@
 
 set -e
 
-VERSION="0.6.3"
+VERSION="0.7.5"
 
 CONFIG_FILE="/usr/local/etc/fbsd_exporter.conf"
 
