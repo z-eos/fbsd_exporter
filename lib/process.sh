@@ -22,9 +22,8 @@ collect_process() {
     metric_help "${METRIC_NAME_PREFIX}_process_count" "Number of processes by name"
     metric_type "${METRIC_NAME_PREFIX}_process_count" "gauge"
 
-    # Build pattern for matching
     if [ -n "$PROCESS_NAMES" ]; then
-	names_pattern=$(echo "$PROCESS_NAMES" | sed 's/ /|/g')
+	names_pattern=$(echo "$PROCESS_NAMES" | tr ' ' '|')
 	# Pass expected names to awk
 	expected_names="$PROCESS_NAMES"
     else
@@ -94,8 +93,9 @@ collect_process() {
 	if (aggregate == "1") {
 	    for (name in proc_count) {
 		printf "%s_process_count{name=\"%s\"} %d\n", pfx, name, proc_count[name]
-		printf "%s_process_total_cpu_percent{name=\"%s\"} %.2f\n", pfx, name, proc_cpu[name]
-		printf "%s_process_total_memory_bytes{name=\"%s\"} %.0f\n", pfx, name, proc_mem[name]
+		# Changed _total_ to _group_ (Gauges)
+		printf "%s_process_group_cpu_percent{name=\"%s\"} %.2f\n", pfx, name, proc_cpu[name]
+		printf "%s_process_group_memory_bytes{name=\"%s\"} %.0f\n", pfx, name, proc_mem[name]
 	    }
 	}
 
@@ -104,14 +104,15 @@ collect_process() {
 	    if (!found_procs[name]) {
 		printf "%s_process_count{name=\"%s\"} 0\n", pfx, name
 		if (aggregate == "1") {
-		    printf "%s_process_total_cpu_percent{name=\"%s\"} 0\n", pfx, name
-		    printf "%s_process_total_memory_bytes{name=\"%s\"} 0\n", pfx, name
+		    printf "%s_process_group_cpu_percent{name=\"%s\"} 0\n", pfx, name
+		    printf "%s_process_group_memory_bytes{name=\"%s\"} 0\n", pfx, name
 		}
 	    }
 	}
     }'
 
-    for process in `echo $PROCESS_NAMES`;do
+    # Optimized: Avoid unnecessary subshell execution of `echo`
+    for process in $PROCESS_NAMES; do
 	case "$process" in
 	    openvpn)
 		if [ -n "$PROCESS_NAME_OPENVPN_CONFIGS" ]; then
